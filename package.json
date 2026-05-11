@@ -1,0 +1,55 @@
+{
+  "name": "kroegentocht-planner-core",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "check:core": "tsx -e \"import('./packages/core/src/index.ts').then(() => console.log('core ok'))\"",
+    "check:storage": "tsx -e \"import('./packages/storage/src/index.ts').then(() => console.log('storage ok'))\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1033.0",
+    "@aws-sdk/s3-request-presigner": "^3.1033.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@emoji-mart/data": "^1.2.1",
+    "@emoji-mart/react": "^1.1.1",
+    "@mollie/api-client": "^4.5.0",
+    "@types/qrcode": "^1.5.6",
+    "bcryptjs": "^3.0.3",
+    "emoji-mart": "^5.6.0",
+    "gray-matter": "^4.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "marked": "^18.0.3",
+    "next": "^15.3.3",
+    "next-auth": "^5.0.0-beta.30",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "web-push": "^3.6.7",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.14.0",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "@types/web-push": "^3.6.4",
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3"
+  },
+  "browserslist": [
+    "Chrome >= 100",
+    "Edge >= 100",
+    "Firefox >= 100",
+    "Safari >= 15",
+    "iOS >= 15"
+  ]
+}
