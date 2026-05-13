@@ -579,6 +579,32 @@ const migrations = [
 
   `CREATE INDEX IF NOT EXISTS idx_program_items_kroegentocht
    ON {schema}.kroegentocht_program_items(kroegentocht_id, start_time);`,
+
+  // ── Team-leden (org address book + group assignments) ──────────────
+  `CREATE TABLE IF NOT EXISTS {schema}.team_members (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL REFERENCES {schema}.organizations(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    is_18_plus BOOLEAN NOT NULL DEFAULT FALSE,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_team_members_org
+   ON {schema}.team_members(org_id);`,
+
+  `CREATE TABLE IF NOT EXISTS {schema}.group_memberships (
+    member_id TEXT NOT NULL REFERENCES {schema}.team_members(id) ON DELETE CASCADE,
+    config_id TEXT NOT NULL REFERENCES {schema}.planner_configs(id) ON DELETE CASCADE,
+    group_id TEXT NOT NULL,
+    PRIMARY KEY (member_id, config_id, group_id)
+  );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_group_memberships_config
+   ON {schema}.group_memberships(config_id, group_id);`,
 ];
 
 export async function runMigrations(client: PgClient, schema = "public"): Promise<void> {

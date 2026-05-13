@@ -11,6 +11,15 @@ export interface GroupV2 {
   segmentId?: Id;
 }
 
+export interface TeamMember {
+  id: Id;
+  name: string;
+  email?: string;
+  phone?: string;
+  is18Plus?: boolean;
+  notes?: string;
+}
+
 export interface LocationV2 {
   id: Id;
   name: string;

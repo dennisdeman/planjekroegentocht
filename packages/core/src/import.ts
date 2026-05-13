@@ -3,6 +3,11 @@ import type { GroupV2, Id } from "./model";
 export interface ParticipantRow {
   id: Id;
   name: string;
+  email?: string;
+  phone?: string;
+  is18Plus?: boolean;
+  notes?: string;
+  // Legacy school fields, kept for backwards compatibility with old configs.
   className?: string;
   level?: string;
 }
@@ -71,6 +76,18 @@ export function parseParticipantsCsv(raw: string): ImportParticipantsResult {
   const headerColumns = parseLine(lines[0], delimiter).map(normalizeHeader);
 
   const nameIndex = headerColumns.findIndex((header) => ["naam", "name", "student"].includes(header));
+  const emailIndex = headerColumns.findIndex((header) =>
+    ["email", "e-mail", "mail", "emailadres"].includes(header)
+  );
+  const phoneIndex = headerColumns.findIndex((header) =>
+    ["telefoon", "phone", "tel", "telefoonnummer", "mobile", "mobiel"].includes(header)
+  );
+  const is18PlusIndex = headerColumns.findIndex((header) =>
+    ["18plus", "18+", "is_18_plus", "is18plus", "achttienplus", "meerderjarig"].includes(header)
+  );
+  const notesIndex = headerColumns.findIndex((header) =>
+    ["notitie", "notities", "notes", "opmerking", "opmerkingen"].includes(header)
+  );
   const classIndex = headerColumns.findIndex((header) =>
     ["klas", "class", "afdeling", "department"].includes(header)
   );
@@ -91,12 +108,29 @@ export function parseParticipantsCsv(raw: string): ImportParticipantsResult {
     rows.push({
       id: `participant-${rows.length + 1}`,
       name,
-      className: classIndex >= 0 ? columns[classIndex]?.trim() : undefined,
-      level: levelIndex >= 0 ? columns[levelIndex]?.trim() : undefined,
+      email: emailIndex >= 0 ? emptyToUndefined(columns[emailIndex]) : undefined,
+      phone: phoneIndex >= 0 ? emptyToUndefined(columns[phoneIndex]) : undefined,
+      is18Plus: is18PlusIndex >= 0 ? parseBoolean(columns[is18PlusIndex]) : undefined,
+      notes: notesIndex >= 0 ? emptyToUndefined(columns[notesIndex]) : undefined,
+      className: classIndex >= 0 ? emptyToUndefined(columns[classIndex]) : undefined,
+      level: levelIndex >= 0 ? emptyToUndefined(columns[levelIndex]) : undefined,
     });
   }
 
   return { delimiter, rows, warnings };
+}
+
+function emptyToUndefined(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function parseBoolean(value: string | undefined): boolean | undefined {
+  const trimmed = value?.trim().toLowerCase();
+  if (!trimmed) return undefined;
+  if (["ja", "yes", "y", "true", "1", "x", "18+"].includes(trimmed)) return true;
+  if (["nee", "no", "n", "false", "0", ""].includes(trimmed)) return false;
+  return undefined;
 }
 
 export interface AutoGroupOptions {

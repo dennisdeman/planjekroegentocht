@@ -15,6 +15,7 @@ import { NotificationBar } from "@ui/ui/notification-bar";
 import { usePlanState } from "@lib/use-plan-state";
 import { UpgradeModal } from "@ui/upgrade-modal";
 import { confirmDialog } from "@ui/ui/confirm-dialog";
+import { TeamMembersEditor } from "@ui/team-members-editor";
 
 function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -458,6 +459,9 @@ function ConfiguratorContent() {
   const [importClassColumn, setImportClassColumn] = useState("");
   const [importLevelColumn, setImportLevelColumn] = useState("");
 
+  const [editingMembersGroupId, setEditingMembersGroupId] = useState<string | null>(null);
+  const [groupMemberCounts, setGroupMemberCounts] = useState<Record<string, number>>({});
+
   const [scheduleStart, setScheduleStart] = useState("09:00");
   const [scheduleDuration, setScheduleDuration] = useState(15);
   const [scheduleTransition, setScheduleTransition] = useState(0);
@@ -530,6 +534,30 @@ function ConfiguratorContent() {
       void loadConfig(configId);
     }
   }, [configId, loadConfig]);
+
+  // Refresh member-count badges whenever the config or modal changes.
+  useEffect(() => {
+    if (!configId) {
+      setGroupMemberCounts({});
+      return;
+    }
+    if (editingMembersGroupId) return; // modal manages its own count via onCountChange
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/team-members/assignments?configId=${encodeURIComponent(configId)}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { assignments: { memberId: string; groupId: string }[] };
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const a of data.assignments) counts[a.groupId] = (counts[a.groupId] ?? 0) + 1;
+        setGroupMemberCounts(counts);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [configId, editingMembersGroupId]);
 
   useEffect(() => {
     setSegmentsRaw(pretty(activeConfig.segments));
@@ -1201,6 +1229,20 @@ function ConfiguratorContent() {
 
       {upgradeMessage && <UpgradeModal message={upgradeMessage} onClose={() => setUpgradeMessage(null)} />}
 
+      {editingMembersGroupId && configId && (() => {
+        const group = activeConfig.groups.find((g) => g.id === editingMembersGroupId);
+        if (!group) return null;
+        return (
+          <TeamMembersEditor
+            configId={configId}
+            groupId={group.id}
+            groupName={group.name}
+            onClose={() => setEditingMembersGroupId(null)}
+            onCountChange={(count) => setGroupMemberCounts((prev) => ({ ...prev, [group.id]: count }))}
+          />
+        );
+      })()}
+
       {/* Advies-modal bij generatie-fout */}
       {advisorOpen && (
         <div className="help-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) { setAdvisorOpen(false); } }}>
@@ -1743,6 +1785,7 @@ function ConfiguratorContent() {
               <tr>
                 <th>Naam</th>
                 <th>Pool</th>
+                <th>Leden</th>
                 <th>Actie</th>
               </tr>
             </thead>
@@ -1780,6 +1823,17 @@ function ConfiguratorContent() {
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-sm btn-ghost"
+                      onClick={() => setEditingMembersGroupId(group.id)}
+                      disabled={!configId}
+                      title={!configId ? "Sla eerst de config op" : "Beheer leden"}
+                    >
+                      {groupMemberCounts[group.id] ?? 0} leden
+                    </button>
                   </td>
                   <td>
                     <button
