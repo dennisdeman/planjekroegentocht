@@ -97,7 +97,7 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: "Stap 6: Locaties",
         answer:
-          "Voeg de fysieke locaties toe waar gespeeld wordt, bijvoorbeeld 'Spelveld', 'Gymzaal' of 'Basketbalveld'.\n\n" +
+          "Voeg de kroegen of cafés toe waar gespeeld wordt, bijvoorbeeld 'Café De Kroon', 'Bruin Café De Bok' of 'Stadscafé Centraal'.\n\n" +
           "Bij pools met blokkenbeleid heb je minimaal evenveel locaties als pools nodig. " +
           "Het systeem voegt automatisch locaties toe als dat nodig is.\n\n" +
           "Je kunt locaties hernoemen of verwijderen met de X-knop.",

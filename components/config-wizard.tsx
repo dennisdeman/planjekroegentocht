@@ -630,7 +630,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Op welke locaties wordt er gespeeld?</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Een locatie is een fysieke plek zoals een spelveld of gymzaal.
+              Een locatie is een kroeg of café waar teams een spel spelen.
               {usePools && movementPolicy === "blocks" ? ` Bij blokken heb je minimaal ${poolCount} locaties nodig (1 per pool).` : ""}
             </p>
             <div>
