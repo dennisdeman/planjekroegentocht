@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { LocationV2 } from "@core";
 
 interface VenueResult {
@@ -42,6 +42,7 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const searchIdRef = useRef(0);
 
   const latNum = lat.trim() ? Number(lat) : null;
   const lngNum = lng.trim() ? Number(lng) : null;
@@ -50,6 +51,42 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
   const hasAddress = address.trim().length > 0;
   const canSave = name.trim().length > 0 && (hasAddress || hasCoords);
 
+  async function reverseGeocodeCity(lat: number, lng: number): Promise<string | null> {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=10`,
+        { headers: { "Accept-Language": "nl" } }
+      );
+      if (!res.ok) return null;
+      const data = (await res.json()) as { address?: { city?: string; town?: string; village?: string; municipality?: string; state?: string } };
+      const a = data.address;
+      if (!a) return null;
+      return a.city ?? a.town ?? a.village ?? a.municipality ?? a.state ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function enrichWithCities(results: VenueResult[], myId: number) {
+    for (let i = 0; i < results.length; i++) {
+      if (searchIdRef.current !== myId) return; // newer search took over
+      const r = results[i];
+      if (r.address || r.lat == null || r.lng == null) continue;
+      const city = await reverseGeocodeCity(r.lat, r.lng);
+      if (searchIdRef.current !== myId) return;
+      if (city) {
+        setSearchResults((prev) => {
+          if (!prev[i] || prev[i].sourceId !== r.sourceId) return prev;
+          const next = [...prev];
+          next[i] = { ...next[i], address: city };
+          return next;
+        });
+      }
+      // Polite gap voor Nominatim's 1 req/s limit.
+      await new Promise((res) => setTimeout(res, 1100));
+    }
+  }
+
   async function runSearch() {
     const nameQ = name.trim();
     if (!nameQ) return;
@@ -57,6 +94,7 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
     // ("cafe aan de haven" alleen → Lock Haven, PA. "cafe aan de haven Culemborg" → NL).
     const addressQ = address.trim();
     const q = addressQ ? `${nameQ} ${addressQ}` : nameQ;
+    const myId = ++searchIdRef.current;
     setSearching(true);
     setSearchError(null);
     setSearchResults([]);
@@ -67,8 +105,11 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
         setSearchError(data.error ?? `HTTP ${res.status}`);
         return;
       }
-      setSearchResults(data.results ?? []);
+      const results = data.results ?? [];
+      setSearchResults(results);
       setSearched(true);
+      // Asynchroon de plaatsnamen erbij ophalen voor resultaten zonder adres.
+      void enrichWithCities(results, myId);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Zoeken mislukt.");
     } finally {
@@ -211,7 +252,7 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
                 >
                   <div style={{ fontWeight: 500 }}>{r.name}</div>
                   <div className="muted" style={{ fontSize: "0.82rem" }}>
-                    {r.address ?? "geen adres"}
+                    {r.address ?? (r.lat != null ? "plaats ophalen…" : "geen adres")}
                     {r.rating != null && <> · {r.rating.toFixed(1)}⭐{r.reviewCount ? ` (${r.reviewCount})` : ""}</>}
                     {r.category && <> · {r.category}</>}
                   </div>
