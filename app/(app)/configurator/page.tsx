@@ -465,6 +465,7 @@ function ConfiguratorContent() {
   const [groupMemberCounts, setGroupMemberCounts] = useState<Record<string, number>>({});
   const [showVenueSearch, setShowVenueSearch] = useState(false);
   const [showManualLocation, setShowManualLocation] = useState(false);
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
 
   const [scheduleStart, setScheduleStart] = useState("09:00");
   const [scheduleDuration, setScheduleDuration] = useState(15);
@@ -1259,6 +1260,24 @@ function ConfiguratorContent() {
         />
       )}
 
+      {editingLocationId !== null && (() => {
+        const existing = activeConfig.locations.find((l) => l.id === editingLocationId);
+        if (!existing) return null;
+        const { id: _id, ...initial } = existing;
+        return (
+          <ManualLocationModal
+            initial={initial}
+            onClose={() => setEditingLocationId(null)}
+            onSave={(loc) => {
+              const next = activeConfig.locations.map((l) =>
+                l.id === editingLocationId ? { id: l.id, ...loc } : l
+              );
+              updateConfig({ locations: next });
+            }}
+          />
+        );
+      })()}
+
       {showVenueSearch && (
         <VenueSearchModal
           onClose={() => setShowVenueSearch(false)}
@@ -1951,17 +1970,18 @@ function ConfiguratorContent() {
           }
         >
         <div className="editor-list">
-          {activeConfig.locations.map((location, index) => (
-            <div key={location.id} className="editor-row">
-              <input
-                value={location.name}
-                onChange={(event) => {
-                  const next = [...activeConfig.locations];
-                  next[index] = { ...next[index], name: event.target.value };
-                  updateConfig({ locations: next });
-                }}
-              />
-              <small className="muted">id: {location.id}</small>
+          {activeConfig.locations.map((location) => (
+            <div key={location.id} className="editor-row" style={{ alignItems: "center" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500 }}>{location.name}</div>
+                {(location.address || location.rating != null) && (
+                  <div className="muted" style={{ fontSize: "0.8rem" }}>
+                    {location.address ?? ""}{location.rating != null ? ` · ${location.rating.toFixed(1)}⭐${location.reviewCount ? ` (${location.reviewCount})` : ""}` : ""}
+                  </div>
+                )}
+                <small className="muted">id: {location.id}</small>
+              </div>
+              <button type="button" className="btn-sm btn-ghost" onClick={() => setEditingLocationId(location.id)}>✏️ Bewerk</button>
               <button
                 type="button"
                 className="danger-button"

@@ -155,6 +155,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   const [newLocation, setNewLocation] = useState("");
   const [showVenueSearch, setShowVenueSearch] = useState(false);
   const [showManualLocation, setShowManualLocation] = useState(false);
+  const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
   // Step 7 (stations — auto-generated)
   const [stationLayout, setStationLayout] = useState<"same" | "split">("split");
   const [stationOverrides, setStationOverrides] = useState<Array<{ spel: string; location: string; capacity: number }> | null>(null);
@@ -610,19 +611,16 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
             </p>
             <div>
               {locations.map((l, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6, marginBottom: 4, alignItems: "center" }}>
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 6, marginBottom: 4, alignItems: "center" }}>
                   <div>
-                    <input
-                      value={l.name}
-                      onChange={(e) => { const next = [...locations]; next[i] = { ...next[i], name: e.target.value }; setLocations(next); }}
-                      style={{ width: "100%" }}
-                    />
+                    <div style={{ fontWeight: 500 }}>{l.name || <em className="muted">(naamloos)</em>}</div>
                     {(l.address || l.rating != null) && (
                       <div className="muted" style={{ fontSize: "0.78rem", marginTop: 2 }}>
                         {l.address ?? ""}{l.rating != null ? ` · ${l.rating.toFixed(1)}⭐${l.reviewCount ? ` (${l.reviewCount})` : ""}` : ""}
                       </div>
                     )}
                   </div>
+                  <button type="button" className="btn-sm btn-ghost" onClick={() => setEditingLocationIndex(i)}>✏️</button>
                   {locations.length > 1 && <button type="button" className="btn-sm danger-button" onClick={() => setLocations(locations.filter((_, j) => j !== i))}>X</button>}
                 </div>
               ))}
@@ -1047,6 +1045,18 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                 sourceId: loc.sourceId,
               },
             ]);
+          }}
+        />
+      )}
+
+      {editingLocationIndex !== null && locations[editingLocationIndex] && (
+        <ManualLocationModal
+          initial={locations[editingLocationIndex]}
+          onClose={() => setEditingLocationIndex(null)}
+          onSave={(loc) => {
+            const next = [...locations];
+            next[editingLocationIndex] = { ...loc };
+            setLocations(next);
           }}
         />
       )}

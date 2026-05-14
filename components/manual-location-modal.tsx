@@ -20,19 +20,23 @@ interface VenueResult {
 interface Props {
   onClose: () => void;
   onSave: (loc: Omit<LocationV2, "id">) => void;
+  /** Pre-fill voor edit-mode. Niet aanwezig = nieuwe locatie. */
+  initial?: Partial<Omit<LocationV2, "id">>;
 }
 
-export function ManualLocationModal({ onClose, onSave }: Props) {
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [lat, setLat] = useState<string>("");
-  const [lng, setLng] = useState<string>("");
-  const [phone, setPhone] = useState("");
-  const [website, setWebsite] = useState("");
-  const [rating, setRating] = useState<number | null>(null);
-  const [reviewCount, setReviewCount] = useState<number | null>(null);
-  const [category, setCategory] = useState("");
-  const [sourceId, setSourceId] = useState<string | null>(null);
+export function ManualLocationModal({ onClose, onSave, initial }: Props) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [address, setAddress] = useState(initial?.address ?? "");
+  const [lat, setLat] = useState<string>(initial?.lat != null ? String(initial.lat) : "");
+  const [lng, setLng] = useState<string>(initial?.lng != null ? String(initial.lng) : "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [website, setWebsite] = useState(initial?.website ?? "");
+  const [rating, setRating] = useState<number | null>(initial?.rating ?? null);
+  const [reviewCount, setReviewCount] = useState<number | null>(initial?.reviewCount ?? null);
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [sourceId, setSourceId] = useState<string | null>(initial?.sourceId ?? null);
+  const [reverseGeocoding, setReverseGeocoding] = useState(false);
+  const isEdit = Boolean(initial);
 
   const [searchResults, setSearchResults] = useState<VenueResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -69,7 +73,23 @@ export function ManualLocationModal({ onClose, onSave }: Props) {
     }
   }
 
-  function applyResult(r: VenueResult) {
+  async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+    // Nominatim reverse-geocode (gratis OSM). Polite use: 1 req/sec, User-Agent vereist.
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`,
+        { headers: { "Accept-Language": "nl" } }
+      );
+      if (!res.ok) return null;
+      const data = (await res.json()) as { display_name?: string; address?: Record<string, string> };
+      if (data.display_name) return data.display_name;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function applyResult(r: VenueResult) {
     setName(r.name);
     setAddress(r.address ?? "");
     setLat(r.lat != null ? String(r.lat) : "");
@@ -82,6 +102,15 @@ export function ManualLocationModal({ onClose, onSave }: Props) {
     setSourceId(r.sourceId);
     setSearchResults([]); // hide list after pick
     setSearched(false);
+
+    // Serper geeft soms geen adres terug bij name-only zoekopdrachten —
+    // probeer Nominatim reverse-geocode op de coords om alsnog een adres te krijgen.
+    if (!r.address && r.lat != null && r.lng != null) {
+      setReverseGeocoding(true);
+      const addr = await reverseGeocode(r.lat, r.lng);
+      if (addr) setAddress(addr);
+      setReverseGeocoding(false);
+    }
   }
 
   function handleSave() {
@@ -111,7 +140,7 @@ export function ManualLocationModal({ onClose, onSave }: Props) {
         style={{ width: "min(640px, 100%)", maxHeight: "85vh", overflow: "auto" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>Kroeg toevoegen</h3>
+          <h3 style={{ margin: 0 }}>{isEdit ? "Kroeg bewerken" : "Kroeg toevoegen"}</h3>
           <button type="button" className="btn-sm btn-ghost" onClick={onClose}>Sluit</button>
         </div>
 
@@ -177,6 +206,7 @@ export function ManualLocationModal({ onClose, onSave }: Props) {
           <label style={{ display: "grid", gap: 4 }}>
             <span className="muted" style={{ fontSize: "0.82rem" }}>
               Adres {!hasCoords && <em style={{ color: "var(--danger, #c33)" }}>(verplicht zonder lat/lng)</em>}
+              {reverseGeocoding && <span style={{ marginLeft: 6 }}>· adres ophalen…</span>}
             </span>
             <input
               value={address}
@@ -230,7 +260,7 @@ export function ManualLocationModal({ onClose, onSave }: Props) {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
             <button type="button" className="btn-sm btn-ghost" onClick={onClose}>Annuleer</button>
             <button type="button" className="btn-sm btn-primary" onClick={handleSave} disabled={!canSave}>
-              Voeg toe
+              {isEdit ? "Opslaan" : "Voeg toe"}
             </button>
           </div>
         </div>
