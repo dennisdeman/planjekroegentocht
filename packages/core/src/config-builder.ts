@@ -133,8 +133,8 @@ export interface ConfigBuilderParams {
   // Spellen / Activity Types
   spellen: string[];
 
-  // Locations
-  locations: string[];
+  // Locations — accepts either plain names (legacy) or richer objects with metadata.
+  locations: Array<string | { name: string; address?: string; lat?: number; lng?: number; phone?: string; website?: string; rating?: number; reviewCount?: number; priceLevel?: string; category?: string; sourceId?: string }>;
 
   // Movement
   movementPolicy: "free" | "blocks";
@@ -163,11 +163,15 @@ export interface ConfigBuilderResult {
 }
 
 export function buildConfig(params: ConfigBuilderParams): ConfigBuilderResult {
+  // Normalize locations: accept both plain strings and richer objects with metadata.
+  const locationInputs = params.locations.map((l) => (typeof l === "string" ? { name: l } : l));
+  const locationNames = locationInputs.map((l) => l.name);
+
   const poolCount = params.usePools ? params.poolNames.length : 1;
   const effectiveMovement = params.usePools ? params.movementPolicy : "free";
   const calc = calculateSchedule(
     params.groupCount, poolCount, params.spellen.length,
-    effectiveMovement, params.locations.length, params.scheduleMode, params.stationLayout,
+    effectiveMovement, locationNames.length, params.scheduleMode, params.stationLayout,
     params.groupsPerPool,
   );
 
@@ -215,8 +219,8 @@ export function buildConfig(params: ConfigBuilderParams): ConfigBuilderResult {
     baseId: findSpelByName(s)?.key ?? null,
   }));
 
-  // Locations
-  const locations = params.locations.map((l, i) => ({ id: `veld-${i + 1}`, name: l }));
+  // Locations — preserve metadata from input.
+  const locations = locationInputs.map((l, i) => ({ id: `locatie-${i + 1}`, ...l }));
 
   // Stations
   let stations: ConfigV2["stations"];
@@ -233,25 +237,25 @@ export function buildConfig(params: ConfigBuilderParams): ConfigBuilderResult {
   } else {
     // Auto-generate stations from spellen + layout
     const stationDefs: Array<{ spel: string; location: string }> = [];
-    if (effectiveMovement === "blocks" && params.usePools && params.locations.length >= 2) {
+    if (effectiveMovement === "blocks" && params.usePools && locationNames.length >= 2) {
       if (params.stationLayout === "same") {
-        for (const loc of params.locations) {
+        for (const loc of locationNames) {
           for (const spel of params.spellen) {
             stationDefs.push({ spel, location: loc });
           }
         }
       } else {
         // Split: groepeer spellen per locatie (1-5 → veld 1, 6-10 → veld 2)
-        const perLoc = Math.ceil(params.spellen.length / params.locations.length);
+        const perLoc = Math.ceil(params.spellen.length / locationNames.length);
         for (let i = 0; i < params.spellen.length; i++) {
-          stationDefs.push({ spel: params.spellen[i], location: params.locations[Math.floor(i / perLoc)] ?? params.locations[params.locations.length - 1] });
+          stationDefs.push({ spel: params.spellen[i], location: locationNames[Math.floor(i / perLoc)] ?? locationNames[locationNames.length - 1] });
         }
       }
     } else {
       // Free / no pools: groepeer spellen per locatie
-      const perLoc = Math.ceil(params.spellen.length / Math.max(params.locations.length, 1));
+      const perLoc = Math.ceil(params.spellen.length / Math.max(locationNames.length, 1));
       for (let i = 0; i < params.spellen.length; i++) {
-        stationDefs.push({ spel: params.spellen[i], location: params.locations[Math.floor(i / perLoc)] ?? params.locations[params.locations.length - 1] });
+        stationDefs.push({ spel: params.spellen[i], location: locationNames[Math.floor(i / perLoc)] ?? locationNames[locationNames.length - 1] });
       }
     }
 

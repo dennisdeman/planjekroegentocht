@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { ConfigV2, PlanSummaryLine, ScheduleMode, Alternative } from "@core";
 import { buildConfig, calculateSchedule, computePlanScore, generateBestPlan, generatePlanSummary, hasAlgebraicK, totalRepeatPenalty, proposeAlternatives, getSpelNames } from "@core";
+import { VenueSearchModal } from "@ui/venue-search-modal";
 
 interface WizardProps {
   onComplete: (config: ConfigV2) => void;
@@ -37,11 +38,13 @@ interface FeasibilityResult { repeats: number; summary: PlanSummaryLine[]; total
 
 // Kosten-constanten verwijderd — zitten nu in alternatives.ts
 
+type LocationLike = string | { name: string; address?: string; lat?: number; lng?: number; phone?: string; website?: string; rating?: number; reviewCount?: number; priceLevel?: string; category?: string; sourceId?: string };
+
 type BaseParams = {
   name: string; usePools: boolean; poolNames: string[];
   movementPolicy: "free" | "blocks"; repeatPolicy: "off" | "soft" | "hard";
   startTime: string; roundDuration: number; transitionTime: number;
-  stationLayout: "same" | "split"; locations: string[];
+  stationLayout: "same" | "split"; locations: LocationLike[];
   scheduleMode: ScheduleMode;
   groupsPerPool?: number[];
 };
@@ -51,7 +54,7 @@ function buildTrialConfig(
   spellen: string[],
   groupCount: number,
   layout: "same" | "split",
-  locs: string[],
+  locs: LocationLike[],
   scheduleMode?: ScheduleMode,
 ): ConfigV2 {
   return buildConfig({
@@ -61,7 +64,7 @@ function buildTrialConfig(
     groupCount,
     groupsPerPool: base.groupsPerPool,
     spellen,
-    locations: locs,
+    locations: locs.map((l) => (typeof l === "string" ? { name: l } : l)),
     movementPolicy: base.movementPolicy,
     stationLayout: layout,
     scheduleMode: scheduleMode ?? base.scheduleMode,
@@ -131,8 +134,22 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   // Step 5 (schedule mode — shown in step 5 when spellen > rounds)
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("all-spellen");
   // Step 6
-  const [locations, setLocations] = useState<string[]>([]);
+  interface WizardLocation {
+    name: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+    phone?: string;
+    website?: string;
+    rating?: number;
+    reviewCount?: number;
+    priceLevel?: string;
+    category?: string;
+    sourceId?: string;
+  }
+  const [locations, setLocations] = useState<WizardLocation[]>([]);
   const [newLocation, setNewLocation] = useState("");
+  const [showVenueSearch, setShowVenueSearch] = useState(false);
   // Step 7 (stations — auto-generated)
   const [stationLayout, setStationLayout] = useState<"same" | "split">("split");
   const [stationOverrides, setStationOverrides] = useState<Array<{ spel: string; location: string; capacity: number }> | null>(null);
@@ -172,7 +189,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
     if (usePools && movementPolicy === "blocks" && locations.length < poolNames.length) {
       const next = [...locations];
       while (next.length < poolNames.length) {
-        next.push(`Kroeg ${next.length + 1}`);
+        next.push({ name: `Kroeg ${next.length + 1}` });
       }
       setLocations(next);
     }
@@ -274,32 +291,33 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   const autoStations = useMemo(() => {
     const result: Array<{ spel: string; location: string; capacity: number }> = [];
 
-    if (effectiveMovement === "blocks" && usePools && locations.length >= 2) {
+    const locNames = locations.map((l) => l.name);
+    if (effectiveMovement === "blocks" && usePools && locNames.length >= 2) {
       if (stationLayout === "same") {
         // Each location gets the same set of all spellen
-        for (const loc of locations) {
+        for (const loc of locNames) {
           for (const spel of spellen) {
             result.push({ spel, location: loc, capacity: 2 });
           }
         }
       } else {
         // Split: groepeer spellen per locatie (1-5 → veld 1, 6-10 → veld 2)
-        const perLoc = Math.ceil(spellen.length / locations.length);
+        const perLoc = Math.ceil(spellen.length / locNames.length);
         for (let i = 0; i < spellen.length; i++) {
           result.push({
             spel: spellen[i],
-            location: locations[Math.floor(i / perLoc)] ?? locations[locations.length - 1],
+            location: locNames[Math.floor(i / perLoc)] ?? locNames[locNames.length - 1],
             capacity: 2,
           });
         }
       }
     } else {
       // Free / no pools: groepeer spellen per locatie
-      const perLoc = Math.ceil(spellen.length / Math.max(locations.length, 1));
+      const perLoc = Math.ceil(spellen.length / Math.max(locNames.length, 1));
       for (let i = 0; i < spellen.length; i++) {
         result.push({
           spel: spellen[i],
-          location: locations[Math.floor(i / perLoc)] ?? locations[locations.length - 1],
+          location: locNames[Math.floor(i / perLoc)] ?? locNames[locNames.length - 1],
           capacity: 2,
         });
       }
@@ -337,7 +355,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   }
   function addLocation() {
     const l = newLocation.trim();
-    if (l && !locations.includes(l)) { setLocations([...locations, l]); setNewLocation(""); }
+    if (l && !locations.some((x) => x.name === l)) { setLocations([...locations, { name: l }]); setNewLocation(""); }
   }
 
   function goNext() {
@@ -626,19 +644,32 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Op welke locaties wordt er gespeeld?</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Een locatie is een kroeg of café waar teams een spel spelen.
+              Een locatie is een kroeg of café waar teams een spel spelen. Gebruik <strong>Zoek kroegen</strong> om
+              kroegen via Google te zoeken, of voeg handmatig namen toe.
               {usePools && movementPolicy === "blocks" ? ` Bij blokken heb je minimaal ${poolCount} locaties nodig (1 per pool).` : ""}
             </p>
             <div>
               {locations.map((l, i) => (
-                <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
-                  <input value={l} onChange={(e) => { const next = [...locations]; next[i] = e.target.value; setLocations(next); }} style={{ flex: 1 }} />
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6, marginBottom: 4, alignItems: "center" }}>
+                  <div>
+                    <input
+                      value={l.name}
+                      onChange={(e) => { const next = [...locations]; next[i] = { ...next[i], name: e.target.value }; setLocations(next); }}
+                      style={{ width: "100%" }}
+                    />
+                    {(l.address || l.rating != null) && (
+                      <div className="muted" style={{ fontSize: "0.78rem", marginTop: 2 }}>
+                        {l.address ?? ""}{l.rating != null ? ` · ${l.rating.toFixed(1)}⭐${l.reviewCount ? ` (${l.reviewCount})` : ""}` : ""}
+                      </div>
+                    )}
+                  </div>
                   {locations.length > 1 && <button type="button" className="btn-sm danger-button" onClick={() => setLocations(locations.filter((_, j) => j !== i))}>X</button>}
                 </div>
               ))}
               <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                 <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nieuwe locatie" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLocation(); } }} style={{ flex: 1 }} />
                 <button type="button" className="btn-sm" onClick={addLocation}>+</button>
+                <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>🔍 Zoek kroegen</button>
               </div>
             </div>
             {usePools && movementPolicy === "blocks" && locations.length < poolCount && (
@@ -826,11 +857,11 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
             {locations.map((loc) => {
               const stationsForLoc = activeStations
                 .map((s, i) => ({ ...s, origIndex: i }))
-                .filter((s) => s.location === loc);
+                .filter((s) => s.location === loc.name);
               if (stationsForLoc.length === 0) return null;
               return (
-                <div key={loc} style={{ marginBottom: 12 }}>
-                  <p style={{ margin: "0 0 4px", fontWeight: 600, fontSize: "0.85rem" }}>{loc} ({stationsForLoc.length} station{stationsForLoc.length !== 1 ? "s" : ""})</p>
+                <div key={loc.name} style={{ marginBottom: 12 }}>
+                  <p style={{ margin: "0 0 4px", fontWeight: 600, fontSize: "0.85rem" }}>{loc.name} ({stationsForLoc.length} station{stationsForLoc.length !== 1 ? "s" : ""})</p>
                   {stationsForLoc.map((s) => (
                     <div key={s.origIndex} style={{ display: "flex", gap: 6, marginBottom: 3, alignItems: "center", paddingLeft: 8 }}>
                       <span style={{ flex: "1 1 120px", fontSize: "0.88rem" }}>{s.spel}</span>
@@ -840,7 +871,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                           next[s.origIndex] = { ...next[s.origIndex], location: e.target.value };
                           setStationOverrides(next);
                         }} style={{ flex: "0 0 110px", fontSize: "0.85rem" }}>
-                          {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+                          {locations.map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
                         </select>
                       )}
                       <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 80px" }}>
@@ -970,6 +1001,31 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           </div>
         </div>
       </div>
+
+      {showVenueSearch && (
+        <VenueSearchModal
+          onClose={() => setShowVenueSearch(false)}
+          existingSourceIds={locations.map((l) => l.sourceId).filter((id): id is string => Boolean(id))}
+          onAdd={(venues) => {
+            setLocations([
+              ...locations,
+              ...venues.map((v) => ({
+                name: v.name,
+                address: v.address,
+                lat: v.lat,
+                lng: v.lng,
+                phone: v.phone,
+                website: v.website,
+                rating: v.rating,
+                reviewCount: v.reviewCount,
+                priceLevel: v.priceLevel,
+                category: v.category,
+                sourceId: v.sourceId,
+              })),
+            ]);
+          }}
+        />
+      )}
     </div>
   );
 }

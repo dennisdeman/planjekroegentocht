@@ -330,11 +330,12 @@ function enumerateCandidates(
 
   // --- 8. Extra locatie ---
   if (currentLocCount < 4 && COST_LOCATION <= costBudget) {
+    const existingNames = baseParams.locations.map((l) => (typeof l === "string" ? l : l.name));
     candidates.push({
       patch: {
         locations: [
-          ...baseParams.locations,
-          `Veld ${currentLocCount + 1}`,
+          ...existingNames,
+          `Kroeg ${currentLocCount + 1}`,
         ],
       },
       cost: COST_LOCATION,
