@@ -1985,7 +1985,14 @@ function ConfiguratorContent() {
               <button
                 type="button"
                 className="danger-button"
-                onClick={() => {
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: "Kroeg verwijderen",
+                    message: `Kroeg "${location.name}" verwijderen? Gekoppelde stations worden ook verwijderd.`,
+                    confirmLabel: "Verwijder",
+                    variant: "danger",
+                  });
+                  if (!ok) return;
                   const nextLocations = activeConfig.locations.filter((item) => item.id !== location.id);
                   const nextStations = activeConfig.stations.filter((station) => station.locationId !== location.id);
                   const nextBlocks = (activeConfig.locationBlocks ?? []).map((block) => {

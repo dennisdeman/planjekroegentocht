@@ -5,6 +5,7 @@ import type { ConfigV2, PlanSummaryLine, ScheduleMode, Alternative } from "@core
 import { buildConfig, calculateSchedule, computePlanScore, generateBestPlan, generatePlanSummary, hasAlgebraicK, totalRepeatPenalty, proposeAlternatives, getSpelNames } from "@core";
 import { VenueSearchModal } from "@ui/venue-search-modal";
 import { ManualLocationModal } from "@ui/manual-location-modal";
+import { confirmDialog } from "@ui/ui/confirm-dialog";
 
 interface WizardProps {
   onComplete: (config: ConfigV2) => void;
@@ -621,7 +622,24 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                     )}
                   </div>
                   <button type="button" className="btn-sm btn-ghost" onClick={() => setEditingLocationIndex(i)}>✏️</button>
-                  {locations.length > 1 && <button type="button" className="btn-sm danger-button" onClick={() => setLocations(locations.filter((_, j) => j !== i))}>X</button>}
+                  {locations.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn-sm danger-button"
+                      onClick={async () => {
+                        const ok = await confirmDialog({
+                          title: "Kroeg verwijderen",
+                          message: `Kroeg "${l.name || `#${i + 1}`}" verwijderen?`,
+                          confirmLabel: "Verwijder",
+                          variant: "danger",
+                        });
+                        if (!ok) return;
+                        setLocations(locations.filter((_, j) => j !== i));
+                      }}
+                    >
+                      X
+                    </button>
+                  )}
                 </div>
               ))}
               <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
