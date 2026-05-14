@@ -192,11 +192,13 @@ export function TeamMembersEditor({ configId, groupId, groupName, onClose }: Pro
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="help-modal-backdrop"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div
-        className="modal"
-        style={{ maxWidth: 720, width: "calc(100% - 32px)" }}
-        onClick={(e) => e.stopPropagation()}
+        className="help-modal-card"
+        style={{ width: "min(720px, 100%)", maxHeight: "85vh", overflow: "auto" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h3 style={{ margin: 0 }}>Leden van {groupName}</h3>
