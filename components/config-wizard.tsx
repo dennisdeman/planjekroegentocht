@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import type { ConfigV2, PlanSummaryLine, ScheduleMode, Alternative } from "@core";
 import { buildConfig, calculateSchedule, computePlanScore, generateBestPlan, generatePlanSummary, hasAlgebraicK, totalRepeatPenalty, proposeAlternatives, getSpelNames } from "@core";
 import { VenueSearchModal } from "@ui/venue-search-modal";
+import { ManualLocationModal } from "@ui/manual-location-modal";
 
 interface WizardProps {
   onComplete: (config: ConfigV2) => void;
@@ -153,6 +154,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   const [locations, setLocations] = useState<WizardLocation[]>([]);
   const [newLocation, setNewLocation] = useState("");
   const [showVenueSearch, setShowVenueSearch] = useState(false);
+  const [showManualLocation, setShowManualLocation] = useState(false);
   // Step 7 (stations — auto-generated)
   const [stationLayout, setStationLayout] = useState<"same" | "split">("split");
   const [stationOverrides, setStationOverrides] = useState<Array<{ spel: string; location: string; capacity: number }> | null>(null);
@@ -625,9 +627,8 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                 </div>
               ))}
               <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nieuwe kroeg" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLocation(); } }} style={{ flex: 1 }} />
-                <button type="button" className="btn-sm" onClick={addLocation}>+</button>
-                <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>🔍 Zoek kroegen</button>
+                <button type="button" className="btn-sm" onClick={() => setShowManualLocation(true)}>+ Kroeg toevoegen</button>
+                <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>🔍 Zoek meerdere kroegen tegelijk</button>
               </div>
             </div>
             {usePools && movementPolicy === "blocks" && locations.length < poolCount && (
@@ -1025,6 +1026,30 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           </div>
         </div>
       </div>
+
+      {showManualLocation && (
+        <ManualLocationModal
+          onClose={() => setShowManualLocation(false)}
+          onSave={(loc) => {
+            setLocations([
+              ...locations,
+              {
+                name: loc.name,
+                address: loc.address,
+                lat: loc.lat,
+                lng: loc.lng,
+                phone: loc.phone,
+                website: loc.website,
+                rating: loc.rating,
+                reviewCount: loc.reviewCount,
+                priceLevel: loc.priceLevel,
+                category: loc.category,
+                sourceId: loc.sourceId,
+              },
+            ]);
+          }}
+        />
+      )}
 
       {showVenueSearch && (
         <VenueSearchModal

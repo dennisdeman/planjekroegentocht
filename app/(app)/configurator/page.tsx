@@ -17,6 +17,7 @@ import { UpgradeModal } from "@ui/upgrade-modal";
 import { confirmDialog } from "@ui/ui/confirm-dialog";
 import { TeamMembersEditor } from "@ui/team-members-editor";
 import { VenueSearchModal } from "@ui/venue-search-modal";
+import { ManualLocationModal } from "@ui/manual-location-modal";
 
 function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -463,6 +464,7 @@ function ConfiguratorContent() {
   const [editingMembersGroupId, setEditingMembersGroupId] = useState<string | null>(null);
   const [groupMemberCounts, setGroupMemberCounts] = useState<Record<string, number>>({});
   const [showVenueSearch, setShowVenueSearch] = useState(false);
+  const [showManualLocation, setShowManualLocation] = useState(false);
 
   const [scheduleStart, setScheduleStart] = useState("09:00");
   const [scheduleDuration, setScheduleDuration] = useState(15);
@@ -1245,6 +1247,18 @@ function ConfiguratorContent() {
         );
       })()}
 
+      {showManualLocation && (
+        <ManualLocationModal
+          onClose={() => setShowManualLocation(false)}
+          onSave={(loc) => {
+            const id = nextNumericId("locatie", activeConfig.locations.map((l) => l.id));
+            updateConfig({
+              locations: [...activeConfig.locations, { id, ...loc }],
+            });
+          }}
+        />
+      )}
+
       {showVenueSearch && (
         <VenueSearchModal
           onClose={() => setShowVenueSearch(false)}
@@ -1926,17 +1940,12 @@ function ConfiguratorContent() {
               <button
                 type="button"
                 className="btn-sm"
-                onClick={() => {
-                  const id = nextNumericId("locatie", activeConfig.locations.map((l) => l.id));
-                  updateConfig({
-                    locations: [...activeConfig.locations, { id, name: `Locatie ${activeConfig.locations.length + 1}` }],
-                  });
-                }}
+                onClick={() => setShowManualLocation(true)}
               >
                 + Locatie
               </button>
               <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>
-                🔍 Zoek kroegen
+                🔍 Zoek meerdere kroegen
               </button>
             </>
           }
