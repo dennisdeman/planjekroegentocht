@@ -18,6 +18,7 @@ import { confirmDialog } from "@ui/ui/confirm-dialog";
 import { TeamMembersEditor } from "@ui/team-members-editor";
 import { VenueSearchModal } from "@ui/venue-search-modal";
 import { ManualLocationModal } from "@ui/manual-location-modal";
+import { SpelPickerModal } from "@ui/spel-picker-modal";
 
 function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -466,6 +467,8 @@ function ConfiguratorContent() {
   const [showVenueSearch, setShowVenueSearch] = useState(false);
   const [showManualLocation, setShowManualLocation] = useState(false);
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [showSpelPicker, setShowSpelPicker] = useState(false);
+  const [viewingSpelName, setViewingSpelName] = useState<string | null>(null);
 
   const [scheduleStart, setScheduleStart] = useState("09:00");
   const [scheduleDuration, setScheduleDuration] = useState(15);
@@ -1260,6 +1263,26 @@ function ConfiguratorContent() {
         />
       )}
 
+      {showSpelPicker && (
+        <SpelPickerModal
+          onClose={() => setShowSpelPicker(false)}
+          excludeNames={activeConfig.activityTypes.map((a) => a.name)}
+          onSelect={(spel) => {
+            const id = nextNumericId("activity", activeConfig.activityTypes.map((a) => a.id));
+            updateConfig({
+              activityTypes: [...activeConfig.activityTypes, { id, name: spel.name, baseId: spel.baseKey }],
+            });
+          }}
+        />
+      )}
+
+      {viewingSpelName && (
+        <SpelPickerModal
+          onClose={() => setViewingSpelName(null)}
+          viewOnlyName={viewingSpelName}
+        />
+      )}
+
       {editingLocationId !== null && (() => {
         const existing = activeConfig.locations.find((l) => l.id === editingLocationId);
         if (!existing) return null;
@@ -1922,19 +1945,29 @@ function ConfiguratorContent() {
       </section>
 
       <section className="card" id="section-spellen">
-        <CollapsibleSection title="Spellen" count={activeConfig.activityTypes.length} defaultOpen={activeConfig.activityTypes.length === 0} actions={<button type="button" className="btn-sm" onClick={() => { const id = nextNumericId("activity", activeConfig.activityTypes.map((a) => a.id)); updateConfig({ activityTypes: [...activeConfig.activityTypes, { id, name: `Spel ${activeConfig.activityTypes.length + 1}`, baseId: null }] }); }}>+ Spel</button>}>
+        <CollapsibleSection
+          title="Spellen"
+          count={activeConfig.activityTypes.length}
+          defaultOpen={activeConfig.activityTypes.length === 0}
+          actions={
+            <button type="button" className="btn-sm" onClick={() => setShowSpelPicker(true)}>
+              + Spel toevoegen
+            </button>
+          }
+        >
         <div className="editor-list">
-          {activeConfig.activityTypes.map((activityType, index) => (
-            <div key={activityType.id} className="editor-row">
-              <input
-                value={activityType.name}
-                onChange={(event) => {
-                  const next = [...activeConfig.activityTypes];
-                  next[index] = { ...next[index], name: event.target.value };
-                  updateConfig({ activityTypes: next });
-                }}
-              />
-              <small className="muted">id: {activityType.id}</small>
+          {activeConfig.activityTypes.length === 0 && (
+            <p className="muted">Nog geen spellen toegevoegd. Klik op &quot;+ Spel toevoegen&quot; om er een uit je bibliotheek te kiezen.</p>
+          )}
+          {activeConfig.activityTypes.map((activityType) => (
+            <div key={activityType.id} className="editor-row" style={{ alignItems: "center" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500 }}>{activityType.name}</div>
+                <small className="muted">id: {activityType.id}</small>
+              </div>
+              <button type="button" className="btn-sm btn-ghost" onClick={() => setViewingSpelName(activityType.name)}>
+                ℹ️ Info
+              </button>
               <button
                 type="button"
                 className="danger-button"
