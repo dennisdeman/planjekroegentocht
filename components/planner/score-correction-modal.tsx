@@ -53,7 +53,7 @@ export function ScoreCorrectionModal({ kroegentochtId, open, onClose, onSaved }:
     if (!st) return stationId;
     const loc = config?.locations.find((l) => l.id === st.locationId);
     const act = config?.activityTypes.find((a) => a.id === st.activityTypeId);
-    return `${act?.name ?? "Spel"} @ ${loc?.name ?? "Veld"}`;
+    return `${act?.name ?? "Spel"} @ ${loc?.name ?? "Kroeg"}`;
   };
 
   const activeTimeslots = useMemo(
@@ -67,7 +67,7 @@ export function ScoreCorrectionModal({ kroegentochtId, open, onClose, onSaved }:
     <div className="help-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) { setEditing(null); onClose(); } }}>
       <div className="help-modal-card" style={{ width: "min(640px, 100%)", maxHeight: "85vh", overflow: "auto" }}>
         <div className="help-modal-header" style={{ marginBottom: 14 }}>
-          <h3>{editing ? "Score aanpassen" : "Alle wedstrijden"}</h3>
+          <h3>{editing ? "Score aanpassen" : "Alle spelletjes"}</h3>
           <button type="button" className="btn-ghost btn-sm" onClick={() => { if (editing) setEditing(null); else onClose(); }}>
             {editing ? "Terug" : "Sluiten"}
           </button>

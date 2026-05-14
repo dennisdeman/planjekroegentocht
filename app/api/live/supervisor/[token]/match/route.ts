@@ -122,7 +122,7 @@ export async function PATCH(request: Request, context: RouteCtx) {
       const c = current.rows[0];
       return NextResponse.json(
         {
-          error: "Iemand anders heeft deze wedstrijd net bijgewerkt. Controleer de huidige score.",
+          error: "Iemand anders heeft deze spelletje net bijgewerkt. Controleer de huidige score.",
           current: c
             ? {
                 timeslotIndex: c.timeslot_index, stationId: c.station_id,

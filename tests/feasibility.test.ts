@@ -331,7 +331,7 @@ test("8 groepen / 3 spellen / free: lowerBound > 0 (te weinig spellen)", () => {
   // Message moet de tekortkoming benoemen.
   const obstructionMessage = report.messages.find((m) => m.includes("herhaling"));
   assert.ok(obstructionMessage, "verwacht een herhalings-bericht");
-  assert.match(obstructionMessage!, /7 wedstrijden/);
+  assert.match(obstructionMessage!, /7 spelletjes/);
   assert.match(obstructionMessage!, /3 unieke spellen/);
   assert.match(obstructionMessage!, /32 totaal/);
 });

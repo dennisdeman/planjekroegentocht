@@ -47,8 +47,8 @@ export async function POST(request: Request) {
           system: `Je bent een kroegentocht-advisor voor basisscholen. Je analyseert een kroegentocht-schema en stelt concrete verbeteringen voor.
 
 Kroegentocht-regels:
-- Groepen spelen in paren (2 teams per wedstrijd). Groepen ÷ 2 = wedstrijden per ronde.
-- Voor 100% bezetting: wedstrijden per ronde = aantal stations.
+- Groepen spelen in paren (2 teams per spelletje). Groepen ÷ 2 = spelletjes per ronde.
+- Voor 100% bezetting: spelletjes per ronde = aantal stations.
 - Oneven groepen per pool = 1 groep rust per ronde (bye). Dit is onwenselijk.
 - Even groepen per pool (4, 6, 8, 10) is altijd beter dan oneven.
 - Bij "blocks" movement: pools wisselen van veld na de pauze. Vereist minstens 2 locaties.

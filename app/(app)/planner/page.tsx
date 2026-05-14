@@ -20,7 +20,6 @@ import {
   exportGroepsKaartenPDF,
   exportLocatieOverzichtPDF,
   exportScorebordPDF,
-  exportScheidsrechtersPDF,
   exportSpelbegeleiderPDF,
 } from "@lib/export";
 import { computeStationMaterials, computeMaterialTotals, type OrgSpelMaterials } from "@core";
@@ -82,7 +81,7 @@ function PlannerPageInner() {
       })
       .catch(() => {});
   }, []);
-  const [exportTab, setExportTab] = useState<"rooster" | "groepen" | "locaties" | "scorebord" | "scheidsrechters" | "spelbegeleiders" | "materialen">("rooster");
+  const [exportTab, setExportTab] = useState<"rooster" | "groepen" | "locaties" | "scorebord" | "spelbegeleiders" | "materialen">("rooster");
   const [pdfOrientation, setPdfOrientation] = useState<"landscape" | "portrait">("landscape");
   const [exportSelectedGroups, setExportSelectedGroups] = useState<Set<string>>(new Set());
   const [exportSelectedLocations, setExportSelectedLocations] = useState<Set<string>>(new Set());
@@ -395,14 +394,14 @@ function PlannerPageInner() {
             </div>
 
             <div style={{ display: "flex", gap: 4, marginBottom: 20, flexWrap: "wrap" }}>
-              {(["rooster", "groepen", "locaties", "scorebord", "scheidsrechters", "spelbegeleiders", "materialen"] as const).map((tab) => (
+              {(["rooster", "groepen", "locaties", "scorebord", "spelbegeleiders", "materialen"] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   className={exportTab === tab ? "btn-primary btn-sm" : "btn-ghost btn-sm"}
                   onClick={() => setExportTab(tab)}
                 >
-                  {{ rooster: "Rooster", groepen: "Groepskaarten", locaties: "Locatie-overzicht", scorebord: "Scorebord", scheidsrechters: "Scheidsrechters", spelbegeleiders: "Spelbegeleiders", materialen: "Materialen" }[tab]}
+                  {{ rooster: "Rooster", groepen: "Groepskaarten", locaties: "Locatie-overzicht", scorebord: "Scorebord", spelbegeleiders: "Spelbegeleiders", materialen: "Materialen" }[tab]}
                 </button>
               ))}
             </div>
@@ -566,49 +565,10 @@ function PlannerPageInner() {
               </div>
             )}
 
-            {exportTab === "scheidsrechters" && (
-              <div style={{ display: "grid", gap: 12 }}>
-                <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                  Het rooster met een extra scorekolom per station. Print en leg bij elke scheidsrechter neer.
-                </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <label style={{ flex: "1 1 160px" }}>
-                    Locatie
-                    <select value={exportFilterLocation} onChange={(e) => setExportFilterLocation(e.target.value)}>
-                      <option value="">Alle locaties</option>
-                      {activeConfig.locations.map((l) => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label style={{ flex: "1 1 160px" }}>
-                    Spel
-                    <select value={exportFilterSpel} onChange={(e) => setExportFilterSpel(e.target.value)}>
-                      <option value="">Alle spellen</option>
-                      {activeConfig.activityTypes.filter((a) => a.id !== "activity-pause").map((a) => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="inline-actions">
-                  <button type="button" className="btn-primary" onClick={() => {
-                    const filter = {
-                      locationIds: exportFilterLocation ? [exportFilterLocation] : undefined,
-                      activityTypeIds: exportFilterSpel ? [exportFilterSpel] : undefined,
-                    };
-                    void exportScheidsrechtersPDF(activeConfig, activePlan, filter, pdfOrientation);
-                  }}>
-                    PDF downloaden
-                  </button>
-                </div>
-              </div>
-            )}
-
             {exportTab === "spelbegeleiders" && (
               <div style={{ display: "grid", gap: 12 }}>
                 <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                  Per station een compleet pakket: speluitleg, materiaallijst, veldopzet en wedstrijdschema met scorekolom.
+                  Per station een compleet pakket: speluitleg, materiaallijst, veldopzet en spelletjeschema met scorekolom.
                 </p>
                 <div className="inline-actions">
                   <button type="button" className="btn-primary" onClick={() => {

@@ -948,25 +948,30 @@ function KroegentochtSettingsModal({
             />
           </label>
 
-          <h4 style={{ margin: "4px 0 0", fontSize: "0.95rem" }}>Puntensysteem</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-            <label style={{ display: "grid", gap: 2 }}>
-              <span className="muted" style={{ fontSize: "0.78rem" }}>Winst</span>
-              <input type="number" min={0} value={config.pointsWin} onChange={(e) => setConfig({ ...config, pointsWin: Math.max(0, Number(e.target.value) || 0) })} />
-            </label>
-            <label style={{ display: "grid", gap: 2 }}>
-              <span className="muted" style={{ fontSize: "0.78rem" }}>Gelijk</span>
-              <input type="number" min={0} value={config.pointsDraw} onChange={(e) => setConfig({ ...config, pointsDraw: Math.max(0, Number(e.target.value) || 0) })} />
-            </label>
-            <label style={{ display: "grid", gap: 2 }}>
-              <span className="muted" style={{ fontSize: "0.78rem" }}>Verlies</span>
-              <input type="number" min={0} value={config.pointsLoss} onChange={(e) => setConfig({ ...config, pointsLoss: Math.max(0, Number(e.target.value) || 0) })} />
-            </label>
-          </div>
+          {config.scoring !== "challenge" && config.scoring !== "ranking_only" && (
+            <>
+              <h4 style={{ margin: "4px 0 0", fontSize: "0.95rem" }}>Puntensysteem</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <label style={{ display: "grid", gap: 2 }}>
+                  <span className="muted" style={{ fontSize: "0.78rem" }}>Winst</span>
+                  <input type="number" min={0} value={config.pointsWin} onChange={(e) => setConfig({ ...config, pointsWin: Math.max(0, Number(e.target.value) || 0) })} />
+                </label>
+                <label style={{ display: "grid", gap: 2 }}>
+                  <span className="muted" style={{ fontSize: "0.78rem" }}>Gelijk</span>
+                  <input type="number" min={0} value={config.pointsDraw} onChange={(e) => setConfig({ ...config, pointsDraw: Math.max(0, Number(e.target.value) || 0) })} />
+                </label>
+                <label style={{ display: "grid", gap: 2 }}>
+                  <span className="muted" style={{ fontSize: "0.78rem" }}>Verlies</span>
+                  <input type="number" min={0} value={config.pointsLoss} onChange={(e) => setConfig({ ...config, pointsLoss: Math.max(0, Number(e.target.value) || 0) })} />
+                </label>
+              </div>
+            </>
+          )}
 
           <label style={{ display: "grid", gap: 4 }}>
             <span className="muted" style={{ fontSize: "0.78rem" }}>Scoretype</span>
             <select value={config.scoring} onChange={(e) => setConfig({ ...config, scoring: e.target.value as LiveConfig["scoring"] })}>
+              <option value="challenge">Challenge (score per groep, geen tegenstander)</option>
               <option value="win_loss">Winst/gelijk/verlies</option>
               <option value="goals_plus_win">Winst + doelpunten tellen mee</option>
               <option value="ranking_only">Alleen rangorde (estafette-modus)</option>

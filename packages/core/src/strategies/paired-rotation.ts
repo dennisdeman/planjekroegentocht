@@ -7,7 +7,7 @@
  * samen op via backtracking, zodat:
  *   - elke groep alle H stations bezoekt (0 spel-herhalingen)
  *   - elke tegenstander maximaal 1x wordt getroffen
- *   - maximaal 1 wedstrijd per station per ronde (stationscapaciteit)
+ *   - maximaal 1 spelletje per station per ronde (stationscapaciteit)
  *
  * Trade-off: slechts 44-60% van de mogelijke paren wordt gebruikt
  * (partieel round-robin). In all-spellen modus is dat acceptabel.

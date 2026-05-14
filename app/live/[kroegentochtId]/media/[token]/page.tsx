@@ -92,7 +92,7 @@ export default function PublicMediaPage() {
     for (const s of config.stations) {
       const loc = config.locations.find((l) => l.id === s.locationId);
       const act = config.activityTypes.find((a) => a.id === s.activityTypeId);
-      m.set(s.id, `${act?.name ?? "Spel"} @ ${loc?.name ?? "Veld"}`);
+      m.set(s.id, `${act?.name ?? "Spel"} @ ${loc?.name ?? "Kroeg"}`);
     }
     return m;
   }, [config]);

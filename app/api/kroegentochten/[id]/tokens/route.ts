@@ -28,7 +28,7 @@ function enrichTokenWithLabel(
     if (station) {
       const location = config.locations.find((l) => l.id === station.locationId);
       const activity = config.activityTypes.find((a) => a.id === station.activityTypeId);
-      return `Spelbegeleider — ${activity?.name ?? "Spel"} @ ${location?.name ?? "Veld"}`;
+      return `Spelbegeleider — ${activity?.name ?? "Spel"} @ ${location?.name ?? "Kroeg"}`;
     }
     return `Spelbegeleider — ${token.scopeId}`;
   }

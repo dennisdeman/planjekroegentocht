@@ -44,9 +44,30 @@ export function computeLeaderboard(
     });
   }
 
+  const isChallenge = liveConfig.scoring === "challenge";
+
   for (const m of matches) {
     if (m.status !== "completed") continue;
-    if (m.scoreA == null || m.scoreB == null) continue;
+    if (m.scoreA == null) continue;
+    if (isChallenge) {
+      // In challenge mode each team gets their own score; geen tegenstander-comparison.
+      const a = acc.get(m.groupAId);
+      if (a) {
+        a.played += 1;
+        a.goalsFor += m.scoreA;
+        a.points += m.scoreA;
+      }
+      if (m.groupBId && m.scoreB != null) {
+        const b = acc.get(m.groupBId);
+        if (b) {
+          b.played += 1;
+          b.goalsFor += m.scoreB;
+          b.points += m.scoreB;
+        }
+      }
+      continue;
+    }
+    if (m.scoreB == null) continue;
     if (!m.groupBId) continue; // bye
 
     const a = acc.get(m.groupAId);

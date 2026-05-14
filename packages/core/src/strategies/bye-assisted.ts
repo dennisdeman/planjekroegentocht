@@ -163,7 +163,7 @@ export const byeAssistedStrategy: PlanStrategy = {
 
   applicable(config: ConfigV2, feasibility: FeasibilityReport): boolean {
     // Actief voor even pools waar de algebraïsche constructie niet werkt
-    // en er meer dan 0 wedstrijden zijn.
+    // en er meer dan 0 spelletjes zijn.
     if (feasibility.segments.length === 0) return false;
     return feasibility.segments.some(
       (seg) =>

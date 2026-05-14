@@ -109,7 +109,7 @@ export function MatchDetailModal({
       <div className="help-modal-card" style={{ width: "min(480px, 100%)" }}>
         <div className="help-modal-header" style={{ marginBottom: 10 }}>
           <div>
-            <h3 style={{ margin: 0 }}>Wedstrijd detail</h3>
+            <h3 style={{ margin: 0 }}>Spelletje detail</h3>
             <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>
               Ronde {(match.timeslotIndex) + 1}
               {timeslot ? ` · ${formatTime(timeslot.start)} – ${formatTime(timeslot.end)}` : ""}

@@ -77,8 +77,8 @@ export function RoundColumnMenu({
           {confirmAction === "cancel" ? (
             <>
               <p style={{ fontSize: "0.88rem", lineHeight: 1.5, margin: "0 0 12px" }}>
-                Dit annuleert <strong>{count} wedstrijd{count !== 1 ? "en" : ""}</strong> in {label}.
-                Scores die al ingevoerd zijn worden bewaard maar de wedstrijden worden gemarkeerd als afgelast.
+                Dit annuleert <strong>{count} spelletje{count !== 1 ? "en" : ""}</strong> in {label}.
+                Scores die al ingevoerd zijn worden bewaard maar de spelletjes worden gemarkeerd als afgelast.
               </p>
               <label style={{ display: "grid", gap: 4, marginBottom: 12 }}>
                 <span className="muted" style={{ fontSize: "0.78rem" }}>Reden</span>
@@ -89,7 +89,7 @@ export function RoundColumnMenu({
             </>
           ) : (
             <p style={{ fontSize: "0.88rem", lineHeight: 1.5, margin: "0 0 12px" }}>
-              Dit herstelt <strong>{count} afgelaste wedstrijd{count !== 1 ? "en" : ""}</strong> in {label} naar &apos;ingepland&apos;.
+              Dit herstelt <strong>{count} afgelaste spelletje{count !== 1 ? "en" : ""}</strong> in {label} naar &apos;ingepland&apos;.
             </p>
           )}
 
@@ -102,7 +102,7 @@ export function RoundColumnMenu({
               onClick={handleConfirm}
               disabled={loading}
             >
-              {loading ? "Bezig..." : confirmAction === "cancel" ? `Ja, annuleer ${count} wedstrijden` : `Herstel ${count} wedstrijden`}
+              {loading ? "Bezig..." : confirmAction === "cancel" ? `Ja, annuleer ${count} spelletjes` : `Herstel ${count} spelletjes`}
             </button>
           </div>
         </div>

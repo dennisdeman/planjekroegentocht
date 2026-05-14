@@ -262,7 +262,7 @@ function CurrentMatchTicker({
       <footer className="scoreboard-ticker">
         <div style={{ display: "flex", gap: "clamp(8px, 2vw, 40px)", alignItems: "center", fontSize: "clamp(0.9rem, min(2.2vw, 3.5vh), 2.4rem)", flexWrap: "wrap", justifyContent: "center" }}>
           <strong style={{ color: "#ff6b00", letterSpacing: "0.1em" }}>● WACHTEN</strong>
-          <span style={{ opacity: 0.7 }}>Geen actieve wedstrijden op dit moment.</span>
+          <span style={{ opacity: 0.7 }}>Geen actieve spelletjes op dit moment.</span>
         </div>
       </footer>
     );

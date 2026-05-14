@@ -353,7 +353,7 @@ function SupervisorView({ data, refresh, token, showNameModal, onNameRegistered 
             <div style={{ minWidth: 0, flex: 1 }}>
               <h2 style={{ margin: 0, fontSize: "1.15rem" }}>{data.planName}</h2>
               <p className="muted" style={{ margin: "2px 0 0", fontSize: "0.88rem" }}>
-                {supervisorDisplayName ? <><strong>{supervisorDisplayName}</strong> &mdash; </> : null}{activity?.name ?? "Spel"} @ {location?.name ?? "Veld"}
+                {supervisorDisplayName ? <><strong>{supervisorDisplayName}</strong> &mdash; </> : null}{activity?.name ?? "Spel"} @ {location?.name ?? "Kroeg"}
                 {currentRoundNumber != null && (
                   <><br />Ronde <strong>{currentRoundNumber}/{totalRounds}</strong></>
                 )}
@@ -525,7 +525,7 @@ function ScheduleView({ data, activeTimeslots, groupNameById, myStationId, curre
 
   const myStation = config.stations.find((s) => s.id === myStationId);
   const mySpelName = config.activityTypes.find((a) => a.id === myStation?.activityTypeId)?.name ?? "Spel";
-  const myLocationName = config.locations.find((l) => l.id === myStation?.locationId)?.name ?? "Veld";
+  const myLocationName = config.locations.find((l) => l.id === myStation?.locationId)?.name ?? "Kroeg";
 
   const matchesBySlot = useMemo(() => {
     const m = new Map<number, typeof state.matches>();
@@ -541,7 +541,7 @@ function ScheduleView({ data, activeTimeslots, groupNameById, myStationId, curre
   return (
     <main style={{ display: "grid", gap: 14, maxWidth: 560, margin: "0 auto", padding: "0 2px" }}>
       <p className="muted" style={{ margin: "0 0 2px", fontSize: "0.82rem" }}>
-        Alle wedstrijden op dit station — {mySpelName} @ {myLocationName}.
+        Alle spelletjes op dit station — {mySpelName} @ {myLocationName}.
       </p>
       {activeTimeslots.map((slot, i) => {
         const matches = matchesBySlot.get(slot.index) ?? [];
@@ -568,7 +568,7 @@ function ScheduleView({ data, activeTimeslots, groupNameById, myStationId, curre
               <small className="muted">{fmtTime(slot.start)} – {fmtTime(slot.end)}</small>
             </div>
             <div style={{ display: "grid", gap: 6 }}>
-              {matches.length === 0 && <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Geen wedstrijden in deze ronde.</p>}
+              {matches.length === 0 && <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Geen spelletjes in deze ronde.</p>}
               {matches.map((m) => {
                 const gA = groupNameById.get(m.groupAId) ?? m.groupAId;
                 const gB = m.groupBId ? (groupNameById.get(m.groupBId) ?? m.groupBId) : null;
@@ -1110,7 +1110,7 @@ function OtherReasonDialog({ onCancel, onConfirm }: { onCancel: () => void; onCo
           <h3 style={{ margin: 0 }}>Reden</h3>
           <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>Sluiten</button>
         </div>
-        <p className="muted" style={{ margin: "0 0 8px", fontSize: "0.86rem" }}>Waarom is deze wedstrijd afgelast?</p>
+        <p className="muted" style={{ margin: "0 0 8px", fontSize: "0.86rem" }}>Waarom is deze spelletje afgelast?</p>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}

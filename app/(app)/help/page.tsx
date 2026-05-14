@@ -19,7 +19,7 @@ const HELP_SECTIONS: HelpSection[] = [
           "Plan je Kroegentocht is een online tool waarmee je een kroegentocht kunt organiseren zonder planning-conflicten. " +
           "Je stelt groepen, spellen en locaties in, en het systeem genereert automatisch een eerlijk schema. " +
           "Elke groep speelt zoveel mogelijk verschillende spellen, tegenstanders worden eerlijk verdeeld, " +
-          "en het rooster past op jouw tijdschema. Geschikt voor basisscholen, spelverenigingen en bedrijfsevenementen.",
+          "en het rooster past op jouw tijdschema. Geschikt voor vriendengroepen, verenigingen en bedrijfsevenementen.",
       },
       {
         question: "Hoe begin ik met een nieuwe kroegentocht?",
@@ -55,20 +55,20 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: "Stap 2: Pools (groepenverdeling)",
         answer:
-          "Kies of je pools wilt gebruiken. Pools zijn aparte competities binnen je kroegentocht.\n\n" +
+          "Kies of je pools wilt gebruiken. Pools zijn aparte routes binnen je kroegentocht.\n\n" +
           "**Wanneer pools gebruiken?**\n" +
-          "- Bij veel groepen die je wilt opdelen (bijv. onderbouw en bovenbouw)\n" +
-          "- Als je groepen op aparte velden wilt laten spelen\n\n" +
-          "**Zonder pools**: Alle groepen spelen in één competitie.\n\n" +
-          "**Met pools**: Groepen worden verdeeld over pools (bijv. Pool A en Pool B). " +
-          "Groepen uit verschillende pools spelen niet tegen elkaar. " +
+          "- Bij grote groepen die je over twee parallelle routes wilt verdelen\n" +
+          "- Als je verschillende kroegen-volgordes wilt voor elke groep\n\n" +
+          "**Zonder pools**: Alle groepen lopen dezelfde route.\n\n" +
+          "**Met pools**: Groepen worden verdeeld over routes (bijv. Route A en Route B). " +
+          "Groepen uit verschillende routes komen elkaar minder vaak tegen. " +
           "Je kunt poolnamen aanpassen en pools toevoegen of verwijderen.",
       },
       {
         question: "Stap 3: Aantal groepen",
         answer:
           "Stel in hoeveel groepen er meedoen. Een groep is een team dat samen door het programma gaat.\n\n" +
-          "**Zonder pools**: Voer het totale aantal groepen in. Het systeem berekent hoeveel rondes en wedstrijden nodig zijn.\n\n" +
+          "**Zonder pools**: Voer het totale aantal groepen in. Het systeem berekent hoeveel rondes en spelletjes nodig zijn.\n\n" +
           "**Met pools**: Verdeel de groepen over de pools. Je kunt per pool het aantal aanpassen. " +
           "Het systeem toont het totaal en berekent het schema op basis van de grootste pool.\n\n" +
           "**Tip**: Een even aantal groepen per pool werkt het beste. Bij een oneven aantal rust er elke ronde een groep.",
@@ -76,12 +76,9 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: "Stap 4: Verplaatsbeleid (alleen bij pools)",
         answer:
-          "Bepaal hoe pools zich bewegen tussen locaties:\n\n" +
-          "**Blokken** (aanbevolen): Elke pool speelt in een vast blok op één locatie. " +
-          "Na een pauze wisselen de pools van locatie. Dit houdt de logistiek overzichtelijk " +
-          "en beperkt het aantal stations dat je nodig hebt.\n\n" +
-          "**Vrij**: Alle pools spelen tegelijk op alle locaties. Dit geeft meer flexibiliteit " +
-          "maar vereist meer stations en is logistiek complexer.",
+          "Bij een kroegentocht lopen groepen per ronde naar een nieuwe kroeg, dus 'Vrij' is standaard de juiste keuze.\n\n" +
+          "**Vrij** (aanbevolen): Alle groepen verspreiden zich elke ronde over alle kroegen.\n\n" +
+          "**Blokken**: Legacy-optie uit de sportdag-context. Niet zinvol voor een kroegentocht door een stad.",
       },
       {
         question: "Stap 5: Spellen kiezen",
@@ -106,9 +103,8 @@ const HELP_SECTIONS: HelpSection[] = [
         question: "Stap 7: Stations en optimalisatie",
         answer:
           "Dit is de belangrijkste stap. Hier zie je hoe je kroegentocht eruit gaat zien.\n\n" +
-          "**Station-indeling** (bij pools met meerdere locaties):\n" +
-          "- **Verschillende spellen per veld**: Spellen worden verdeeld over locaties. Meer variatie per veld.\n" +
-          "- **Dezelfde spellen op elk veld**: Elke locatie krijgt alle spellen. Pools spelen dezelfde spellen op hun eigen veld.\n\n" +
+          "**Station-indeling** (alleen relevant bij pools met meerdere routes):\n" +
+          "- **Verschillende spellen per kroeg**: Standaard — elke kroeg heeft een eigen spel.\n\n" +
           "**Analyse**: Het systeem analyseert je configuratie en toont:\n" +
           "- Stationsbezetting per ronde\n" +
           "- Hoeveel groepen alle spellen spelen\n" +
@@ -127,7 +123,7 @@ const HELP_SECTIONS: HelpSection[] = [
         answer:
           "Stel het tijdschema in:\n\n" +
           "- **Starttijd**: Wanneer begint de kroegentocht?\n" +
-          "- **Duur per ronde**: Hoeveel minuten per wedstrijd (bijv. 15 minuten)\n" +
+          "- **Duur per ronde**: Hoeveel minuten per spelletje (bijv. 15 minuten)\n" +
           "- **Wisseltijd**: Hoeveel minuten tussen rondes voor verplaatsing (bijv. 5 minuten)\n\n" +
           "Het systeem toont een preview met exacte tijden.\n\n" +
           "**Herhalingsbeleid**: Wat gebeurt er als een groep dezelfde spel twee keer speelt?\n" +
@@ -172,7 +168,7 @@ const HELP_SECTIONS: HelpSection[] = [
         question: "Wat doet de knop 'Valideer'?",
         answer:
           "Valideer controleert het huidige schema op alle regels:\n\n" +
-          "- **Fouten** (rood): Dubbele boekingen, overbezette stations, cross-pool wedstrijden\n" +
+          "- **Fouten** (rood): Dubbele boekingen, overbezette stations, cross-pool spelletjes\n" +
           "- **Waarschuwingen** (oranje): Herhaalde spellen, ongelijke tegenstander-verdeling\n" +
           "- **Informatie** (blauw): Kwaliteitsnotities\n\n" +
           "Het Issues-paneel rechts toont alle gevonden problemen met details over welke groep, " +
@@ -211,7 +207,7 @@ const HELP_SECTIONS: HelpSection[] = [
         question: "Waarom vindt 'Groep 1' niet ook Groep 11 en 12?",
         answer:
           "Het zoekveld matcht op hele woorden. Zo geeft 'Groep 1' alleen Groep 1 terug — niet Groep 10-19. " +
-          "Typ meerdere woorden om te combineren, bijvoorbeeld 'Groep 1 bovenbouw'.",
+          "Typ meerdere woorden om te combineren, bijvoorbeeld 'Groep 1 Route A'.",
       },
       {
         question: "Welke exports zijn er?",
@@ -220,9 +216,9 @@ const HELP_SECTIONS: HelpSection[] = [
           "- **Rooster (PDF)**: het volledige schema om uit te printen\n" +
           "- **Groepskaarten (PDF)**: per groep een kaart met hun persoonlijke programma\n" +
           "- **Locatie-overzicht (PDF)**: per locatie wie er wanneer speelt\n" +
-          "- **Scorebord (PDF)**: leeg scoreformulier per wedstrijd\n" +
+          "- **Scorebord (PDF)**: leeg scoreformulier per spelletje\n" +
           "- **CSV/Excel**: voor eigen verwerking in spreadsheets\n\n" +
-          "Bij export kun je ook filteren op spel, bijvoorbeeld om alleen de voetbalwedstrijden te printen.",
+          "Bij export kun je ook filteren op spel, bijvoorbeeld om alleen de voetbalspelletjes te printen.",
       },
       {
         question: "Kan ik meerdere versies van een planning bewaren?",
@@ -248,15 +244,15 @@ const HELP_SECTIONS: HelpSection[] = [
           "**Tip**: Gebruik de Wizard voor het opzetten en de Configurator alleen als je specifieke aanpassingen wilt maken.",
       },
       {
-        question: "Hoe importeer ik een klassenlijst?",
+        question: "Hoe importeer ik een deelnemerslijst?",
         answer:
           "Ga naar de Configurator en kies 'Bestand importeren'. Je kunt de volgende bestanden uploaden:\n\n" +
-          "- **CSV** (komma-gescheiden)\n" +
+          "- **CSV** (komma- of puntkomma-gescheiden)\n" +
           "- **Excel** (.xlsx of .xls)\n" +
           "- **TSV** (tab-gescheiden)\n\n" +
-          "Het systeem detecteert automatisch de kolommen. Je kunt kiezen tussen:\n\n" +
-          "- **Deelnemers importeren**: Individuele namen worden automatisch in groepen verdeeld. " +
-          "Je kunt de groepsgrootte instellen en eventueel op niveau verdelen (hoog/midden/laag).\n" +
+          "Het systeem herkent automatisch de kolommen: naam, email, telefoon, 18+ en notities. " +
+          "Je kunt kiezen tussen:\n\n" +
+          "- **Deelnemers importeren**: Individuele namen worden automatisch in groepen verdeeld.\n" +
           "- **Groepen importeren**: Voorgemaakte teams met optioneel een pool-kolom.\n\n" +
           "Na het uploaden zie je een preview. Controleer de verdeling en klik op 'Importeren'.",
       },
@@ -264,7 +260,7 @@ const HELP_SECTIONS: HelpSection[] = [
         question: "Hoe sla ik een configuratie op als sjabloon?",
         answer:
           "In de Configurator vind je onderaan de optie 'Sjabloon opslaan'. " +
-          "Geef het sjabloon een naam (bijv. 'Kroegentocht bovenbouw') en klik op opslaan.\n\n" +
+          "Geef het sjabloon een naam (bijv. 'Vrijdagavond pubcrawl') en klik op opslaan.\n\n" +
           "Sjablonen zijn beschikbaar voor alle leden van je organisatie. " +
           "Zo kun je elk jaar snel starten met dezelfde opzet en alleen de groepsnamen aanpassen.",
       },
@@ -277,10 +273,9 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: "Wat zijn pools?",
         answer:
-          "Pools zijn aparte competities binnen je kroegentocht. Groepen in dezelfde pool spelen tegen elkaar, " +
-          "maar nooit tegen groepen uit een andere pool.\n\n" +
-          "**Voorbeeld**: Pool A (groep 5-6) en Pool B (groep 7-8). " +
-          "De jongere kinderen spelen alleen tegen leeftijdsgenoten.\n\n" +
+          "Pools zijn parallelle routes binnen je kroegentocht. Groepen in dezelfde pool delen een schema, " +
+          "groepen in verschillende pools komen elkaar minder vaak tegen.\n\n" +
+          "**Voorbeeld**: Route A en Route B met elk hun eigen volgorde van kroegen — handig bij grote groepen die zich willen verspreiden over de stad.\n\n" +
           "Je kunt 2 of meer pools aanmaken. Elke pool heeft zijn eigen schema.",
       },
       {

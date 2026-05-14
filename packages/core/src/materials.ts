@@ -45,7 +45,7 @@ export function computeStationMaterials(
 
       return {
         stationId: station.id,
-        stationName: `${activity?.name ?? "Spel"} @ ${loc?.name ?? "Veld"}`,
+        stationName: `${activity?.name ?? "Spel"} @ ${loc?.name ?? "Kroeg"}`,
         spelName: activity?.name ?? "Onbekend",
         baseId,
         isRenamed: !!(baseId && spel && activity && activity.name !== spel.name),

@@ -11,13 +11,12 @@ import {
   exportGroepsKaartenPDF,
   exportLocatieOverzichtPDF,
   exportScorebordPDF,
-  exportScheidsrechtersPDF,
   exportSpelbegeleiderPDF,
   exportDagprogrammaPDF,
 } from "@lib/export";
 import { exportMaterialsPdf } from "@ui/materials-section";
 
-type ExportTab = "rooster" | "groepen" | "locaties" | "scorebord" | "scheidsrechters" | "spelbegeleiders" | "dagprogramma" | "materialen";
+type ExportTab = "rooster" | "groepen" | "locaties" | "scorebord" | "spelbegeleiders" | "dagprogramma" | "materialen";
 
 interface ProgramItem {
   title: string;
@@ -76,7 +75,6 @@ export function KroegentochtExportModal({ config, plan, kroegentochtId, onClose 
       { key: "dagprogramma", label: "Dagprogramma" },
       { key: "groepen", label: "Groepskaarten" },
       { key: "spelbegeleiders", label: "Spelbegeleiders" },
-      { key: "scheidsrechters", label: "Scheidsrechters" },
     ],
   ];
 
@@ -138,14 +136,14 @@ export function KroegentochtExportModal({ config, plan, kroegentochtId, onClose 
 
         {tab === "groepen" && (
           <div style={{ display: "grid", gap: 12 }}>
-            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Per groep een kaart met alle wedstrijden, locaties en tijden.</p>
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Per groep een kaart met alle spelletjes, locaties en tijden.</p>
             <button type="button" className="btn-primary" onClick={() => exportGroepsKaartenPDF(config, plan, undefined, pdfOrientation)}>PDF downloaden</button>
           </div>
         )}
 
         {tab === "locaties" && (
           <div style={{ display: "grid", gap: 12 }}>
-            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Per locatie alle wedstrijden en groepen.</p>
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Per locatie alle spelletjes en groepen.</p>
             <button type="button" className="btn-primary" onClick={() => exportLocatieOverzichtPDF(config, plan, undefined, pdfOrientation)}>PDF downloaden</button>
           </div>
         )}
@@ -157,16 +155,9 @@ export function KroegentochtExportModal({ config, plan, kroegentochtId, onClose 
           </div>
         )}
 
-        {tab === "scheidsrechters" && (
-          <div style={{ display: "grid", gap: 12 }}>
-            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Overzicht per ronde met wedstrijden en locaties.</p>
-            <button type="button" className="btn-primary" onClick={() => exportScheidsrechtersPDF(config, plan, undefined, pdfOrientation)}>PDF downloaden</button>
-          </div>
-        )}
-
         {tab === "spelbegeleiders" && (
           <div style={{ display: "grid", gap: 12 }}>
-            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Per station een overzicht van alle wedstrijden.</p>
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Per station een overzicht van alle spelletjes.</p>
             <button type="button" className="btn-primary" onClick={() => exportSpelbegeleiderPDF(config, plan, pdfOrientation)}>PDF downloaden</button>
           </div>
         )}

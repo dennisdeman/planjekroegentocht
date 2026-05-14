@@ -7,7 +7,7 @@ export interface LivePublicConfig {
   id: string;
   name: string;
   groups: Array<{ id: string; name: string }>;
-  locations: Array<{ id: string; name: string }>;
+  locations: Array<{ id: string; name: string; lat?: number; lng?: number; address?: string }>;
   activityTypes: Array<{ id: string; name: string; baseId?: string | null }>;
   stations: Array<{ id: string; locationId: string; activityTypeId: string }>;
   timeslots: Array<{ id: string; index: number; kind: "active" | "break"; start: string; end: string; label?: string }>;

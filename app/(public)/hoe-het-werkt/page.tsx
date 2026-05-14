@@ -139,8 +139,8 @@ export default function HoeHetWerktPage() {
             <h3>Scoreapp voor scheidsrechters</h3>
             <p>
               Elke begeleider krijgt een unieke QR-code. Hij scant, voert zijn naam in en
-              ziet meteen welke wedstrijden er bij hem horen. Score invoeren met +/−,
-              wedstrijd annuleren met reden, vorige rondes terugkijken. Werkt ook offline.
+              ziet meteen welke spelletjes er bij hem horen. Score invoeren met +/−,
+              spelletje annuleren met reden, vorige rondes terugkijken. Werkt ook offline.
             </p>
           </div>
 
@@ -168,7 +168,7 @@ export default function HoeHetWerktPage() {
             <div className="pub-feature-card-icon">{"\u{1F4F8}"}</div>
             <h3>Foto&apos;s &amp; slideshow</h3>
             <p>
-              Begeleiders maken foto's tijdens de wedstrijden vanuit hun app. Foto's
+              Begeleiders maken foto's tijdens de spelletjes vanuit hun app. Foto's
               komen direct binnen en verschijnen in een fullscreen slideshow op het
               hoofdpodium. Met fade, schuiven of Ken Burns-effect.
             </p>
@@ -236,13 +236,13 @@ export default function HoeHetWerktPage() {
             <h3>Eigen dagprogramma-items</h3>
             <p>
               Welkomstwoord om 8:45, lunchpauze, prijsuitreiking om 12:30 — voeg eigen
-              items toe naast de wedstrijdrondes. Verschijnen op het publieke programma,
+              items toe naast de spelletjerondes. Verschijnen op het publieke programma,
               in de PDF en in alle exports. Als de starttijd verschuift, blijven ze waar
               ze horen (absolute tijden).
             </p>
           </div>
           <div className="pub-feature-visual">
-            <ImageLightbox src="/dagprogramma-items.png" alt="Dagprogramma-editor: eigen items toevoegen tussen de wedstrijdrondes met titel, beschrijving en tijden" />
+            <ImageLightbox src="/dagprogramma-items.png" alt="Dagprogramma-editor: eigen items toevoegen tussen de spelletjerondes met titel, beschrijving en tijden" />
           </div>
         </div>
       </section>
@@ -257,7 +257,7 @@ export default function HoeHetWerktPage() {
             <h3>Spelbegeleider-pakket</h3>
             <p>
               Per station één compleet PDF: speluitleg, materialen, veldopzet én
-              wedstrijdschema met scorekolom. Geef één papiertje aan elke vrijwilliger
+              spelletjeschema met scorekolom. Geef één papiertje aan elke vrijwilliger
               en hij weet alles. Met je eigen logo erop.
             </p>
           </div>

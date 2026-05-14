@@ -14,7 +14,7 @@ export interface SegmentFeasibility {
   segmentId: Id;
   groupCount: number;
   /**
-   * Aantal wedstrijden dat een groep in dit segment speelt. v1-aanname:
+   * Aantal spelletjes dat een groep in dit segment speelt. v1-aanname:
    * gelijk aan het aantal actieve tijdsloten — d.w.z. we nemen aan dat elke
    * groep in elk actief slot speelt. Voor oneven pools is dat een
    * overschatting (sommige groepen krijgen pauze); we kiezen bewust voor
@@ -50,7 +50,7 @@ export interface SegmentFeasibility {
   /**
    * Kleinste `matchupMaxPerPair` dat haalbaar is gegeven het aantal rondes
    * en de poolgrootte: `ceil(matchesPerGroup / (groupCount - 1))`. Bij
-   * groupCount <= 1 is dit 0 (geen wedstrijden mogelijk).
+   * groupCount <= 1 is dit 0 (geen spelletjes mogelijk).
    */
   lowerBoundMatchupCeiling: number;
   /**
@@ -437,7 +437,7 @@ export function analyzePlanFeasibility(config: ConfigV2): FeasibilityReport {
         ? " Een extra ronde met pauze-activiteit kan dit mogelijk verlagen (te verifiëren in fase 2)."
         : "";
       messages.push(
-        `${segmentLabel}: elke groep speelt ${matchesPerGroup} wedstrijden maar bereikt slechts ${reachableActivityTypes} unieke spellen. Minimaal ${perGroupRepeats} herhaling${perGroupRepeats === 1 ? "" : "en"} per groep (${lowerBoundSpelRepeats} totaal in dit segment). Mogelijke oplossingen: verlaag het aantal wedstrijden per groep naar ${reachableActivityTypes}, voeg ${matchesPerGroup - reachableActivityTypes} spel${matchesPerGroup - reachableActivityTypes === 1 ? "" : "en"} toe, of herverdeel locaties zodat groepen meer unieke spellen bereiken.${byeHint}`
+        `${segmentLabel}: elke groep speelt ${matchesPerGroup} spelletjes maar bereikt slechts ${reachableActivityTypes} unieke spellen. Minimaal ${perGroupRepeats} herhaling${perGroupRepeats === 1 ? "" : "en"} per groep (${lowerBoundSpelRepeats} totaal in dit segment). Mogelijke oplossingen: verlaag het aantal spelletjes per groep naar ${reachableActivityTypes}, voeg ${matchesPerGroup - reachableActivityTypes} spel${matchesPerGroup - reachableActivityTypes === 1 ? "" : "en"} toe, of herverdeel locaties zodat groepen meer unieke spellen bereiken.${byeHint}`
       );
     }
   }

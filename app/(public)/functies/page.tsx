@@ -92,7 +92,7 @@ const OP_DE_DAG: Feature[] = [
   {
     icon: "\u{1F4F1}",
     title: "Scoreapp voor begeleiders",
-    text: "Scheidsrechter scant de QR, opent zijn station op zijn telefoon en voert scores in met +/−-knoppen. Ziet zijn eigen rooster, countdown en kan wedstrijden annuleren met reden.",
+    text: "Scheidsrechter scant de QR, opent zijn station op zijn telefoon en voert scores in met +/−-knoppen. Ziet zijn eigen rooster, countdown en kan spelletjes annuleren met reden.",
   },
   {
     icon: "\u{1F3C6}",
@@ -111,8 +111,8 @@ const OP_DE_DAG: Feature[] = [
   },
   {
     icon: "\u{1F4DD}",
-    title: "Audit log per wedstrijd",
-    text: "Alle scoreswijzigingen worden bijgehouden: wie, wat en wanneer. Volledige historie zichtbaar in het wedstrijd-detail. Organisator kan elke score corrigeren — ook na afloop.",
+    title: "Audit log per spelletje",
+    text: "Alle scoreswijzigingen worden bijgehouden: wie, wat en wanneer. Volledige historie zichtbaar in het spelletje-detail. Organisator kan elke score corrigeren — ook na afloop.",
   },
   {
     icon: "\u{23F1}️",
@@ -181,12 +181,12 @@ const EXPORTS: Feature[] = [
   {
     icon: "\u{1F3DF}️",
     title: "Locatie-overzichten",
-    text: "PDF per veld voor de begeleiders met alle wedstrijden op die locatie. Inclusief leeg scorebord om handmatig in te vullen als back-up.",
+    text: "PDF per veld voor de begeleiders met alle spelletjes op die locatie. Inclusief leeg scorebord om handmatig in te vullen als back-up.",
   },
   {
     icon: "\u{1F4D8}",
     title: "Spelbegeleider-pakket",
-    text: "Compleet PDF per station: speluitleg, materialen, veldopzet én wedstrijdschema met scorekolom. Geef één papiertje aan elke vrijwilliger en hij weet alles.",
+    text: "Compleet PDF per station: speluitleg, materialen, veldopzet én spelletjeschema met scorekolom. Geef één papiertje aan elke vrijwilliger en hij weet alles.",
   },
   {
     icon: "\u{1F517}",

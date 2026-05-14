@@ -69,7 +69,7 @@ const FAQ_SECTIONS = [
   {
     title: "Tijdens de kroegentocht",
     items: [
-      { q: "Hoe werkt de scoreapp voor scheidsrechters?", a: "Elke begeleider krijgt een unieke QR-code per station. Hij scant met zijn telefoon, vult zijn naam in en ziet meteen welke wedstrijden er bij zijn station horen. Score invoeren met +/−-knoppen, wedstrijd annuleren met reden, vorige rondes terugkijken. Ook werkbaar offline — scores komen automatisch binnen zodra er weer wifi is." },
+      { q: "Hoe werkt de scoreapp voor scheidsrechters?", a: "Elke begeleider krijgt een unieke QR-code per station. Hij scant met zijn telefoon, vult zijn naam in en ziet meteen welke spelletjes er bij zijn station horen. Score invoeren met +/−-knoppen, spelletje annuleren met reden, vorige rondes terugkijken. Ook werkbaar offline — scores komen automatisch binnen zodra er weer wifi is." },
       { q: "Wat als er geen wifi op het spelveld is?", a: "Geen probleem. De scoreapp werkt offline en bewaart de scores lokaal. Zodra de telefoon weer verbinding heeft, synchroniseert alles vanzelf. Voor de snelste werking kun je de app op je startscherm installeren (PWA)." },
       { q: "Hoe werkt het centrale scorebord?", a: "Open de scorebord-link of scan de QR op een TV of beamer. Fullscreen donkere modus, automatische updates bij elke score, ranking met goud-/zilver-/bronsbadges, ticker met laatst ingevoerde scores. Tiebreakers (head-to-head, doelsaldo) worden automatisch toegepast." },
       { q: "Kunnen ouders en deelnemers het programma volgen?", a: "Ja, via een aparte QR-code voor het publieke programma. Ze openen het op hun mobiel, zoeken hun groep ('waar is groep 3a?') en zien meteen wat ze nu doen en wat er nog komt. Auto-scroll naar de huidige ronde, plus een 'deel deze groep'-knop." },
@@ -84,8 +84,8 @@ const FAQ_SECTIONS = [
   {
     title: "Over exporteren",
     items: [
-      { q: "Welke bestanden kan ik exporteren?", a: "Het rooster als Excel (.xlsx), CSV of PDF. Groepskaarten per team. Locatie-overzichten per veld. Een leeg scorebord. Het spelbegeleider-pakket (compleet PDF per station met speluitleg, materialen, veldopzet en wedstrijdschema). Een dagprogramma-PDF. En alle QR-codes op één A4-PDF. Liggend of staand naar keuze, met je eigen logo." },
-      { q: "Wat is het spelbegeleider-pakket?", a: "Eén PDF per station, klaar om uit te delen aan de scheidsrechter of begeleider. Bevat speluitleg met regels en variant-opties, materialenlijst, veldopzet én het wedstrijdschema met scorekolom als back-up." },
+      { q: "Welke bestanden kan ik exporteren?", a: "Het rooster als Excel (.xlsx), CSV of PDF. Groepskaarten per team. Locatie-overzichten per veld. Een leeg scorebord. Het spelbegeleider-pakket (compleet PDF per station met speluitleg, materialen, veldopzet en spelletjeschema). Een dagprogramma-PDF. En alle QR-codes op één A4-PDF. Liggend of staand naar keuze, met je eigen logo." },
+      { q: "Wat is het spelbegeleider-pakket?", a: "Eén PDF per station, klaar om uit te delen aan de scheidsrechter of begeleider. Bevat speluitleg met regels en variant-opties, materialenlijst, veldopzet én het spelletjeschema met scorekolom als back-up." },
       { q: "Krijg ik een lijst van benodigde materialen?", a: "Ja. Het systeem rekent uit hoeveel pionnen, ballen, hesjes en andere materialen je nodig hebt — per station én totaal. Print de lijst met aanvinkbare vakjes voor de opbouw 's ochtends." },
       { q: "Kan ik groepskaarten per team printen?", a: "Ja. Elke groepskaart heeft: tijd, ronde, spel, locatie, tegenstander en een kolom voor de score. Ideaal om uit te delen aan teams." },
     ],

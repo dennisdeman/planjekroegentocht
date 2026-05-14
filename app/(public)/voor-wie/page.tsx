@@ -127,7 +127,7 @@ export default function VoorWiePage() {
               <p>
                 Je spelvereniging organiseert een clubdag met 12 teams en 6 spellen. Elk team moet
                 tegen zoveel mogelijk andere teams spelen, en iedereen moet elke spel doen. De
-                vrijwilligers die de wedstrijden bijhouden zijn ouders — niet altijd bekend met de
+                vrijwilligers die de spelletjes bijhouden zijn ouders — niet altijd bekend met de
                 regels van elke spel.
               </p>
             </div>
@@ -136,7 +136,7 @@ export default function VoorWiePage() {
               <p>
                 Gebruik de all-spellen modus zodat elk team elke spel speelt. Het systeem verdeelt
                 de tegenstanders eerlijk en minimaliseert herhalingen. Print het spelbegeleider-pakket:
-                één PDF per station met regels, veldopzet, materialenlijst en wedstrijdschema. Het
+                één PDF per station met regels, veldopzet, materialenlijst en spelletjeschema. Het
                 centrale scorebord aan de bar wordt automatisch bijgewerkt — leden zien live wie er
                 voorstaat. En foto's die vrijwilligers maken verschijnen direct in de slideshow op
                 het terras.

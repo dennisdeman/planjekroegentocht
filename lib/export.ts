@@ -456,68 +456,6 @@ export async function exportScorebordPDF(config: ConfigV2, orientation: "landsca
 }
 
 // ---------------------------------------------------------------------------
-// Export: Scheidsrechters PDF (rooster + scorekolom)
-// ---------------------------------------------------------------------------
-
-export async function exportScheidsrechtersPDF(config: ConfigV2, plan: PlanV2, filter?: RoosterFilter, orientation: "landscape" | "portrait" = "landscape"): Promise<void> {
-  const { stationMap, locationMap, activityMap, sortedSlots, stations, cells } = buildGrid(config, plan);
-
-  let filteredStations = stations;
-  if (filter?.locationIds?.length) {
-    filteredStations = filteredStations.filter((s) => filter.locationIds!.includes(s.locationId));
-  }
-  if (filter?.activityTypeIds?.length) {
-    filteredStations = filteredStations.filter((s) => filter.activityTypeIds!.includes(s.activityTypeId));
-  }
-
-  const headers = ["Tijd", ...filteredStations.flatMap((s) => [stationHeader(s, locationMap, activityMap), "Score"])];
-
-  const rows: string[][] = [];
-  for (const slot of sortedSlots) {
-    const row: string[] = [slotLabel(slot)];
-    if (slot.kind === "break") {
-      row.push(...filteredStations.flatMap(() => ["Pauze", ""]));
-    } else {
-      for (const station of filteredStations) {
-        const cell = cells.get(`${slot.id}:${station.id}`);
-        row.push(cell ? cell.groupNames.join(" vs ") : "");
-        row.push("");
-      }
-    }
-    rows.push(row);
-  }
-
-  const logo = await getLogoDataUrl();
-  const doc = new jsPDF({ orientation });
-
-  addLogo(doc, logo);
-
-  doc.setFontSize(16);
-  doc.text(config.name, 14, 15);
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text("Scheidsrechtersformulier", 14, 22);
-  doc.setTextColor(0);
-
-  const colStyles: Record<number, { cellWidth?: number; halign?: "center" }> = {};
-  for (let i = 0; i < filteredStations.length; i++) {
-    colStyles[2 + i * 2] = { cellWidth: 20, halign: "center" };
-  }
-
-  autoTable(doc, {
-    head: [headers],
-    body: rows,
-    startY: 28,
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: [74, 144, 226], textColor: 255, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [245, 248, 255] },
-    columnStyles: colStyles,
-  });
-
-  doc.save(`${config.name} - Scheidsrechters.pdf`);
-}
-
-// ---------------------------------------------------------------------------
 // Export: Spelbegeleider PDF (per station: speluitleg + materialen + schema)
 // ---------------------------------------------------------------------------
 
@@ -535,7 +473,7 @@ export async function exportSpelbegeleiderPDF(config: ConfigV2, plan: PlanV2, or
     const activity = activityMap.get(station.activityTypeId);
     const location = locationMap.get(station.locationId);
     const spelName = activity?.name ?? "Spel";
-    const locName = location?.name ?? "Veld";
+    const locName = location?.name ?? "Kroeg";
     const baseId = activity?.baseId;
     const spel = baseId ? findSpelByKey(baseId) : null;
     const explanation = spel?.explanation;
@@ -604,7 +542,7 @@ export async function exportSpelbegeleiderPDF(config: ConfigV2, plan: PlanV2, or
       y = addSection(doc, "Veldopzet", explanation.fieldSetup, margin, y, pageW, pageH);
     }
 
-    // Wedstrijdschema met scorekolom
+    // Spelletjeschema met scorekolom
     const stationSlots = sortedSlots
       .filter((slot) => slot.kind === "active")
       .map((slot) => {
@@ -617,7 +555,7 @@ export async function exportSpelbegeleiderPDF(config: ConfigV2, plan: PlanV2, or
 
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
-      doc.text("Wedstrijdschema", margin, y + 4);
+      doc.text("Spelletjeschema", margin, y + 4);
       y += 8;
 
       autoTable(doc, {

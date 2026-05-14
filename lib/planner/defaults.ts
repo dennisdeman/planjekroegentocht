@@ -21,8 +21,8 @@ export function createEmptyConfigV2(configId = `cfg-v2-${Date.now()}`): ConfigV2
       avoidRepeatActivityType: "soft",
     },
     scheduleSettings: {
-      roundDurationMinutes: 15,
-      transitionMinutes: 0,
+      roundDurationMinutes: 30,
+      transitionMinutes: 10,
       scheduleMode: "round-robin",
     },
   };
@@ -58,7 +58,7 @@ export const BUILT_IN_PRESETS: BuiltInPreset[] = [
     totalSpellen: groupCount / 2,
     pools: 1,
     label: `${groupCount} groepen · ${groupCount / 2} spellen`,
-    description: `${groupCount / 2} verschillende spellen op 1 veld. Elke groep speelt elke spel precies 1x.`,
+    description: `${groupCount / 2} verschillende spellen verdeeld over kroegen. Elke groep speelt elke spel precies 1x.`,
   })),
   // 2 pool presets
   ...PROVEN_2POOL_SIZES.map((poolSize): BuiltInPreset => ({
@@ -67,7 +67,7 @@ export const BUILT_IN_PRESETS: BuiltInPreset[] = [
     totalSpellen: poolSize,
     pools: 2,
     label: `${poolSize * 2} groepen · ${poolSize} spellen`,
-    description: `${poolSize} verschillende spellen op 2 velden, ${poolSize * 2} groepen verdeeld over 2 pools. Elke groep speelt elke spel precies 1x.`,
+    description: `${poolSize} verschillende spellen op ${poolSize} kroegen, ${poolSize * 2} groepen in twee parallelle routes. Elke groep speelt elke spel precies 1x.`,
   })),
 ];
 
@@ -89,13 +89,13 @@ export function createPresetFromKey(key: string, configId?: string): ConfigV2 {
       groupCount: preset.totalGroups,
       groupNames,
       spellen,
-      locations: ["Veld 1"],
+      locations: spellen.map((_, i) => `Kroeg ${i + 1}`),
       movementPolicy: "free",
       stationLayout: "split",
       scheduleMode: "all-spellen",
-      startTime: "09:00",
-      roundDurationMinutes: 15,
-      transitionMinutes: 5,
+      startTime: "19:30",
+      roundDurationMinutes: 30,
+      transitionMinutes: 10,
       repeatPolicy: "soft",
     });
     if (configId) config.id = configId;
@@ -106,17 +106,17 @@ export function createPresetFromKey(key: string, configId?: string): ConfigV2 {
   const { config } = buildConfig({
     name: `Kroegentocht ${preset.totalGroups} groepen`,
     usePools: true,
-    poolNames: ["Pool A", "Pool B"],
+    poolNames: ["Route A", "Route B"],
     groupCount: preset.totalGroups,
     groupNames,
     spellen,
-    locations: ["Veld 1", "Veld 2"],
-    movementPolicy: "blocks",
+    locations: spellen.map((_, i) => `Kroeg ${i + 1}`),
+    movementPolicy: "free",
     stationLayout: "split",
     scheduleMode: "all-spellen",
-    startTime: "09:00",
-    roundDurationMinutes: 15,
-    transitionMinutes: 5,
+    startTime: "19:30",
+    roundDurationMinutes: 30,
+    transitionMinutes: 10,
     repeatPolicy: "soft",
   });
   if (configId) config.id = configId;

@@ -110,13 +110,13 @@ function diagnoseConfig(config: ConfigV2): string | null {
         if (matchesNeeded > stationCount) {
           const segName = config.segments.find((s) => s.id === segId)?.name ?? segId;
           const locName = config.locations.find((l) => l.id === locId)?.name ?? locId;
-          return `${segName} heeft ${groupCount} groepen (${matchesNeeded} wedstrijden per ronde), maar ${locName} heeft maar ${stationCount} stations. Voeg ${matchesNeeded - stationCount} spel${matchesNeeded - stationCount > 1 ? "en" : ""} toe, of verplaats groepen naar de andere pool.`;
+          return `${segName} heeft ${groupCount} groepen (${matchesNeeded} spelletjes per ronde), maar ${locName} heeft maar ${stationCount} stations. Voeg ${matchesNeeded - stationCount} spel${matchesNeeded - stationCount > 1 ? "en" : ""} toe, of verplaats groepen naar de andere pool.`;
         }
       }
     }
   }
 
-  // Zonder blocks: check totaal stations vs totaal wedstrijden
+  // Zonder blocks: check totaal stations vs totaal spelletjes
   if (config.movementPolicy !== "blocks") {
     for (const [pool, count] of Object.entries(poolGroups)) {
       const matchesNeeded = Math.floor(count / 2);
@@ -125,7 +125,7 @@ function diagnoseConfig(config: ConfigV2): string | null {
       const stationsForPool = Math.floor(totalStations / Math.max(poolCount, 1));
       if (matchesNeeded > stationsForPool) {
         const segName = config.segments.find((s) => s.id === pool)?.name ?? (pool === "__default__" ? "De configuratie" : pool);
-        return `${segName} heeft ${count} groepen (${matchesNeeded} wedstrijden per ronde), maar er zijn maar ${stationsForPool} stations beschikbaar. Voeg spellen toe of verplaats groepen.`;
+        return `${segName} heeft ${count} groepen (${matchesNeeded} spelletjes per ronde), maar er zijn maar ${stationsForPool} stations beschikbaar. Voeg spellen toe of verplaats groepen.`;
       }
     }
   }

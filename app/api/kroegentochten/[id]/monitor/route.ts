@@ -41,7 +41,7 @@ export async function GET(_request: Request, context: RouteCtx) {
       const act = config.activityTypes.find((a) => a.id === station.activityTypeId);
       stationStats.set(station.id, {
         stationId: station.id,
-        label: `${act?.name ?? "Spel"} @ ${loc?.name ?? "Veld"}`,
+        label: `${act?.name ?? "Spel"} @ ${loc?.name ?? "Kroeg"}`,
         total: 0, completed: 0, cancelled: 0, pending: 0, lastActivity: null,
       });
     }

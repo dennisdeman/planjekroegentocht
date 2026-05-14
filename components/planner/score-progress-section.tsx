@@ -72,7 +72,7 @@ export function ScoreProgressSection({ kroegentochtId }: ScoreProgressSectionPro
         </span>
       </div>
       <div className="muted" style={{ fontSize: "0.82rem", marginBottom: 16 }}>
-        {stats.totalCompleted} van {stats.totalMatches} wedstrijden gescoord
+        {stats.totalCompleted} van {stats.totalMatches} spelletjes gescoord
         {stats.totalCancelled > 0 ? ` · ${stats.totalCancelled} afgelast` : ""}
       </div>
 

@@ -333,7 +333,7 @@ function ProgramView({ data }: { data: NonNullable<ReturnType<typeof useLiveStat
 
               <div style={{ display: "grid", gap: 6 }}>
                 {matches.length === 0 && (
-                  <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Geen wedstrijden.</p>
+                  <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Geen spelletjes.</p>
                 )}
                 {matches.map((m) => (
                   <MatchRow
@@ -350,6 +350,9 @@ function ProgramView({ data }: { data: NonNullable<ReturnType<typeof useLiveStat
           );
         })}
       </main>
+      <footer style={{ maxWidth: 720, margin: "16px auto", padding: "10px 12px", border: "1px dashed var(--line)", borderRadius: 8, fontSize: "0.78rem", color: "var(--muted)", textAlign: "center" }}>
+        <strong>NIX18 · Drink verantwoord</strong> — Alcohol is alleen voor 18+. Drink water, eet tussendoor, en regel een veilige weg naar huis.
+      </footer>
       </div>
     </div>
   );
@@ -409,7 +412,21 @@ function MatchRow({
           {gB && <> <span className="muted">vs</span> <span style={{ fontWeight: highlightB ? 700 : 500 }}>{gB}</span></>}
         </div>
         <div className="muted" style={{ fontSize: "0.76rem" }}>
-          {activity?.name ?? "Spel"} @ {location?.name ?? "Veld"}
+          {activity?.name ?? "Spel"} @ {location?.name ?? "Kroeg"}
+          {location?.lat != null && location?.lng != null && (
+            <>
+              {" "}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "inherit", textDecoration: "underline" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                📍 maps
+              </a>
+            </>
+          )}
         </div>
       </div>
       <strong

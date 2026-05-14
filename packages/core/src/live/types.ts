@@ -9,7 +9,13 @@ export type MatchStatus = "scheduled" | "in_progress" | "completed" | "cancelled
 export type MatchCancelReason = "weather" | "no_show" | "injury" | "other";
 
 export interface LiveConfig {
-  scoring: "win_loss" | "ranking_only" | "goals_plus_win";
+  /**
+   * - "win_loss": klassiek wedstrijd-model met punten voor winst/gelijk/verlies.
+   * - "goals_plus_win": punten voor winst + score telt mee in ranglijst.
+   * - "ranking_only": alleen rangorde, geen punten.
+   * - "challenge": single-team challenge per spel — geen tegenstander, score per team telt mee in totaal.
+   */
+  scoring: "win_loss" | "ranking_only" | "goals_plus_win" | "challenge";
   pointsWin: number;
   pointsDraw: number;
   pointsLoss: number;
@@ -19,11 +25,11 @@ export interface LiveConfig {
 }
 
 export const DEFAULT_LIVE_CONFIG: LiveConfig = {
-  scoring: "win_loss",
+  scoring: "challenge",
   pointsWin: 3,
   pointsDraw: 1,
   pointsLoss: 0,
-  tiebreaker: ["head_to_head", "goal_difference", "goals_for"],
+  tiebreaker: ["goals_for", "head_to_head", "goal_difference"],
   byePolicy: "no_points_no_average",
   showScoresOnProgram: true,
 };

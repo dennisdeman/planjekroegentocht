@@ -306,7 +306,7 @@ const migrations = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_tokens_token
    ON {schema}.live_access_tokens(token);`,
 
-  // ── Live-modus: vrije tekst-opmerking bij afgelaste wedstrijden ──
+  // ── Live-modus: vrije tekst-opmerking bij afgelaste spelletjes ──
   `ALTER TABLE {schema}.match_results
     ADD COLUMN IF NOT EXISTS cancel_note TEXT;`,
 

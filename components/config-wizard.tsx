@@ -119,27 +119,27 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   const [name, setName] = useState("");
   // Step 2
   const [usePools, setUsePools] = useState(false);
-  const [poolNames, setPoolNames] = useState(["Pool A", "Pool B"]);
+  const [poolNames, setPoolNames] = useState(["Route A", "Route B"]);
   // Step 3
-  const [groupCount, setGroupCount] = useState(10);
-  const [groupsPerPool, setGroupsPerPool] = useState<number[]>([5, 5]);
+  const [groupCount, setGroupCount] = useState(6);
+  const [groupsPerPool, setGroupsPerPool] = useState<number[]>([3, 3]);
   // Step 4 (movement — only with pools)
-  const [movementPolicy, setMovementPolicy] = useState<"free" | "blocks">("blocks");
+  const [movementPolicy, setMovementPolicy] = useState<"free" | "blocks">("free");
   // Step 5
-  const [spellen, setSpellen] = useState<string[]>(["Voetbal", "Hockey", "Trefbal"]);
+  const [spellen, setSpellen] = useState<string[]>([]);
   const [newSpel, setNewSpel] = useState("");
   // Step 5 (schedule mode — shown in step 5 when spellen > rounds)
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("all-spellen");
   // Step 6
-  const [locations, setLocations] = useState<string[]>(["Veld 1"]);
+  const [locations, setLocations] = useState<string[]>([]);
   const [newLocation, setNewLocation] = useState("");
   // Step 7 (stations — auto-generated)
   const [stationLayout, setStationLayout] = useState<"same" | "split">("split");
   const [stationOverrides, setStationOverrides] = useState<Array<{ spel: string; location: string; capacity: number }> | null>(null);
   // Step 8 (schedule + rules)
-  const [startTime, setStartTime] = useState("09:00");
-  const [roundDuration, setRoundDuration] = useState(15);
-  const [transitionTime, setTransitionTime] = useState(5);
+  const [startTime, setStartTime] = useState("19:30");
+  const [roundDuration, setRoundDuration] = useState(30);
+  const [transitionTime, setTransitionTime] = useState(10);
   const [repeatPolicy, setRepeatPolicy] = useState<"off" | "soft" | "hard">("soft");
   // Pause activity (bye groups)
   const [pauseActivityName, setPauseActivityName] = useState("");
@@ -172,7 +172,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
     if (usePools && movementPolicy === "blocks" && locations.length < poolNames.length) {
       const next = [...locations];
       while (next.length < poolNames.length) {
-        next.push(`Veld ${next.length + 1}`);
+        next.push(`Kroeg ${next.length + 1}`);
       }
       setLocations(next);
     }
@@ -436,16 +436,16 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Wil je pools gebruiken?</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Pools verdelen groepen in aparte competities. Groepen spelen alleen tegen groepen uit hun eigen pool.
-              Dit is handig bij veel groepen — je kunt ze verdelen en eventueel op aparte velden laten spelen.
+              Pools zijn parallelle routes binnen je kroegentocht. Bij grote groepen kan je twee routes naast elkaar laten lopen
+              zodat de stad niet vol staat. Voor de meeste kroegentochten is &apos;Nee&apos; de juiste keuze.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className={usePools ? "btn-primary" : "btn-ghost"} onClick={() => setUsePools(true)}>Ja, pools gebruiken</button>
-              <button type="button" className={!usePools ? "btn-primary" : "btn-ghost"} onClick={() => setUsePools(false)}>Nee, zonder pools</button>
+              <button type="button" className={!usePools ? "btn-primary" : "btn-ghost"} onClick={() => setUsePools(false)}>Nee, één route (aanbevolen)</button>
+              <button type="button" className={usePools ? "btn-primary" : "btn-ghost"} onClick={() => setUsePools(true)}>Ja, meerdere routes</button>
             </div>
             {usePools && (
               <div style={{ marginTop: 8 }}>
-                <label>Poolnamen</label>
+                <label>Route-namen</label>
                 {poolNames.map((pn, i) => (
                   <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}>
                     <input value={pn} onChange={(e) => { const next = [...poolNames]; next[i] = e.target.value; setPoolNames(next); }} />
@@ -457,10 +457,10 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                   </div>
                 ))}
                 <button type="button" className="btn-sm btn-ghost" onClick={() => {
-                  const nextNames = [...poolNames, `Pool ${String.fromCharCode(65 + poolNames.length)}`];
+                  const nextNames = [...poolNames, `Route ${String.fromCharCode(65 + poolNames.length)}`];
                   setPoolNames(nextNames);
                   setGroupsPerPool(distributeGroups(groupCount, nextNames));
-                }}>+ Pool</button>
+                }}>+ Route</button>
               </div>
             )}
           </div>
@@ -470,7 +470,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
         {step === 3 && (
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Hoeveel groepen doen er mee?</h3>
-            <p className="muted" style={{ margin: 0 }}>Een groep is een team dat samen door het programma gaat.</p>
+            <p className="muted" style={{ margin: 0 }}>Een groep is een team dat samen de kroegen aanloopt.</p>
             {!usePools ? (
               <>
                 <input type="number" min={2} value={groupCount} onChange={(e) => updateGroupCount(Number(e.target.value) || 0)} onBlur={() => { if (groupCount < 2) updateGroupCount(2); }} />
@@ -479,7 +479,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                     {groupCount} groepen in één competitie.
                     {" "}Dit geeft <strong>{calc.roundsNeeded} speelrondes</strong>
                     {calc.hasBye ? " (1 groep rust per ronde)" : ""}.
-                    Per ronde zijn er {calc.matchesPerRound} wedstrijden.
+                    Per ronde zijn er {calc.matchesPerRound} spelletjes.
                   </p>
                 </InfoBox>
               </>
@@ -506,7 +506,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                     Totaal: <strong>{groupCount} groepen</strong> verdeeld over {poolCount} pools.
                     {" "}Dit geeft <strong>{calc.roundsNeeded} speelrondes</strong>
                     {calc.hasBye ? " (1 groep rust per ronde)" : ""}.
-                    Per ronde zijn er {calc.matchesPerRound} wedstrijden per pool.
+                    Per ronde zijn er {calc.matchesPerRound} spelletjes per pool.
                   </p>
                 </InfoBox>
                 <div
@@ -527,28 +527,24 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           </div>
         )}
 
-        {/* Step 4: Movement policy (only with pools) */}
+        {/* Step 4: Movement policy (only with pools) — voor kroegentocht is "vrij" standaard de juiste keuze. */}
         {step === 4 && usePools && (
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Verplaatsbeleid</h3>
-            <p className="muted" style={{ margin: 0 }}>Bepaal hoe pools zich bewegen tussen locaties. Dit beïnvloedt hoeveel stations je nodig hebt.</p>
+            <p className="muted" style={{ margin: 0 }}>
+              Bij een kroegentocht lopen groepen elke ronde naar een nieuwe kroeg, dus &apos;Vrij&apos; is standaard de juiste keuze.
+              &apos;Blokken&apos; is een legacy-optie uit de sportdag-context.
+            </p>
             <div style={{ display: "grid", gap: 8 }}>
-              <button type="button" className={movementPolicy === "blocks" ? "start-mode-option is-active" : "start-mode-option"} onClick={() => setMovementPolicy("blocks")} style={{ textAlign: "left" }}>
-                Blokken (aanbevolen)
-                <small>Elke pool speelt op een eigen veld. Na de pauze wisselen de pools. Je hebt {calc.matchesPerRound} spellen en minimaal {poolCount} locaties nodig.</small>
-              </button>
               <button type="button" className={movementPolicy === "free" ? "start-mode-option is-active" : "start-mode-option"} onClick={() => setMovementPolicy("free")} style={{ textAlign: "left" }}>
-                Vrij
-                <small>Alle pools spelen tegelijk op alle velden. Je hebt {calc.matchesPerRound * poolCount} unieke spellen nodig.</small>
+                Vrij (aanbevolen)
+                <small>Alle groepen verspreiden zich elke ronde over alle kroegen. Standaard voor kroegentochten.</small>
+              </button>
+              <button type="button" className={movementPolicy === "blocks" ? "start-mode-option is-active" : "start-mode-option"} onClick={() => setMovementPolicy("blocks")} style={{ textAlign: "left" }}>
+                Blokken (legacy)
+                <small>Elke pool speelt in een vast blok op één locatie. Niet zinvol voor een tocht door een stad.</small>
               </button>
             </div>
-            <InfoBox>
-              <p style={{ margin: 0 }}>
-                {movementPolicy === "blocks"
-                  ? `Bij blokken krijgt elke locatie dezelfde ${calc.stationsPerLocation} stations. Je hebt minimaal ${poolCount} locaties en ${calc.spellenNeeded} spellen nodig — totaal ${calc.totalStations} stations.`
-                  : `Bij vrij spelen alle ${poolCount} pools tegelijk. Je hebt ${calc.totalStations} stations en ${calc.spellenNeeded} unieke spellen nodig.`}
-              </p>
-            </InfoBox>
           </div>
         )}
 
@@ -557,7 +553,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Welke spellen worden er gespeeld?</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Je hebt minimaal <strong>{calc.spellenNeeded} spellen</strong> nodig (voor {calc.stationsPerLocation} gelijktijdige wedstrijden).
+              Je hebt minimaal <strong>{calc.spellenNeeded} spellen</strong> nodig (voor {calc.stationsPerLocation} gelijktijdige spelletjes).
               {calc.enoughSpellen
                 ? spellen.length > calc.spellenNeeded
                   ? ` Je hebt er ${spellen.length} — alle spellen worden gebruikt voor meer variatie.`
