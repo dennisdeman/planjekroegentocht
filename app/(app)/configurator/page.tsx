@@ -1239,7 +1239,6 @@ function ConfiguratorContent() {
             groupId={group.id}
             groupName={group.name}
             onClose={() => setEditingMembersGroupId(null)}
-            onCountChange={(count) => setGroupMemberCounts((prev) => ({ ...prev, [group.id]: count }))}
           />
         );
       })()}

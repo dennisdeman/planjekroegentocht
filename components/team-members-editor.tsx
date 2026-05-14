@@ -17,10 +17,9 @@ interface Props {
   groupId: string;
   groupName: string;
   onClose: () => void;
-  onCountChange?: (count: number) => void;
 }
 
-export function TeamMembersEditor({ configId, groupId, groupName, onClose, onCountChange }: Props) {
+export function TeamMembersEditor({ configId, groupId, groupName, onClose }: Props) {
   const [allOrgMembers, setAllOrgMembers] = useState<TeamMemberView[]>([]);
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,10 +70,6 @@ export function TeamMembersEditor({ configId, groupId, groupName, onClose, onCou
   const groupMembers = groupMemberIds
     .map((id) => allOrgMembers.find((m) => m.id === id))
     .filter((m): m is TeamMemberView => Boolean(m));
-
-  useEffect(() => {
-    onCountChange?.(groupMembers.length);
-  }, [groupMembers.length, onCountChange]);
 
   async function saveAssignments(memberIds: string[]) {
     const res = await fetch("/api/team-members/assignments", {
