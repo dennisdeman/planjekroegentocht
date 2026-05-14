@@ -149,7 +149,7 @@ export function TeamMembersEditor({ configId, groupId, groupName, onClose }: Pro
     setError(null);
     try {
       // Prepend a header so the CSV parser knows the columns.
-      const withHeader = `Naam;Email;Telefoon\n${raw}`;
+      const withHeader = `Naam;Email;Telefoon;18+;Notitie\n${raw}`;
       const { rows, warnings } = parseParticipantsCsv(withHeader);
       if (rows.length === 0) {
         setError(warnings[0] ?? "Geen geldige regels gevonden.");
@@ -273,13 +273,14 @@ export function TeamMembersEditor({ configId, groupId, groupName, onClose }: Pro
             ) : showBulkPaste ? (
               <div className="form-grid" style={{ background: "var(--panel-bg, #f9f9f9)", padding: 12, borderRadius: 6 }}>
                 <p className="muted" style={{ margin: 0 }}>
-                  Eén regel per persoon. Formaat: <code>Naam; email; telefoon</code> (email en telefoon optioneel).
+                  Eén regel per persoon. Formaat: <code>Naam; email; telefoon; 18+; notitie</code> — alleen naam is verplicht.
+                  Voor 18+: <code>ja</code> / <code>nee</code> (of <code>yes</code>/<code>no</code>/<code>1</code>/<code>0</code>). Lege velden mogen, zolang de puntkomma's blijven staan.
                 </p>
                 <textarea
                   value={bulkRaw}
                   onChange={(e) => setBulkRaw(e.target.value)}
                   rows={8}
-                  placeholder={"Jan Jansen; jan@example.nl; +31612345678\nKlaas de Vries\nPiet; piet@example.nl"}
+                  placeholder={"Jan Jansen; jan@example.nl; +31612345678; ja\nKlaas de Vries\nPiet; piet@example.nl; ; nee; allergie noten"}
                   style={{ fontFamily: "monospace" }}
                 />
                 <div style={{ display: "flex", gap: 8 }}>
