@@ -16,6 +16,7 @@ import { usePlanState } from "@lib/use-plan-state";
 import { UpgradeModal } from "@ui/upgrade-modal";
 import { confirmDialog } from "@ui/ui/confirm-dialog";
 import { TeamMembersEditor } from "@ui/team-members-editor";
+import { VenueSearchModal } from "@ui/venue-search-modal";
 
 function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -461,6 +462,7 @@ function ConfiguratorContent() {
 
   const [editingMembersGroupId, setEditingMembersGroupId] = useState<string | null>(null);
   const [groupMemberCounts, setGroupMemberCounts] = useState<Record<string, number>>({});
+  const [showVenueSearch, setShowVenueSearch] = useState(false);
 
   const [scheduleStart, setScheduleStart] = useState("09:00");
   const [scheduleDuration, setScheduleDuration] = useState(15);
@@ -1243,6 +1245,24 @@ function ConfiguratorContent() {
         );
       })()}
 
+      {showVenueSearch && (
+        <VenueSearchModal
+          onClose={() => setShowVenueSearch(false)}
+          existingSourceIds={activeConfig.locations
+            .map((l) => l.sourceId)
+            .filter((id): id is string => Boolean(id))}
+          onAdd={(venues) => {
+            const existingIds = activeConfig.locations.map((l) => l.id);
+            const nextLocations = [...activeConfig.locations];
+            for (const v of venues) {
+              const id = nextNumericId("locatie", [...existingIds, ...nextLocations.map((l) => l.id)]);
+              nextLocations.push({ id, ...v });
+            }
+            updateConfig({ locations: nextLocations });
+          }}
+        />
+      )}
+
       {/* Advies-modal bij generatie-fout */}
       {advisorOpen && (
         <div className="help-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) { setAdvisorOpen(false); } }}>
@@ -1726,7 +1746,7 @@ function ConfiguratorContent() {
         {[
           { label: "Groepen", done: summary.groups > 0, target: "section-groepen" },
           { label: "Spellen", done: summary.activityTypes > 0, target: "section-spellen" },
-          { label: "Velden", done: summary.locations > 0, target: "section-velden" },
+          { label: "Locaties", done: summary.locations > 0, target: "section-locaties" },
           { label: "Stations", done: summary.stations > 0, target: "section-stations" },
           { label: "Tijdschema", done: summary.timeslots > 0, target: "section-tijdschema" },
           ...(activeConfig.segmentsEnabled
@@ -1896,8 +1916,31 @@ function ConfiguratorContent() {
         <MaterialsSection config={activeConfig} onUpdateOverrides={(overrides) => updateConfig({ materialOverrides: overrides })} />
       )}
 
-      <section className="card" id="section-velden">
-        <CollapsibleSection title="Velden" count={activeConfig.locations.length} defaultOpen={activeConfig.locations.length === 0} actions={<button type="button" className="btn-sm" onClick={() => { const id = nextNumericId("veld", activeConfig.locations.map((l) => l.id)); updateConfig({ locations: [...activeConfig.locations, { id, name: `Veld ${activeConfig.locations.length + 1}` }] }); }}>+ Veld</button>}>
+      <section className="card" id="section-locaties">
+        <CollapsibleSection
+          title="Locaties"
+          count={activeConfig.locations.length}
+          defaultOpen={activeConfig.locations.length === 0}
+          actions={
+            <>
+              <button
+                type="button"
+                className="btn-sm"
+                onClick={() => {
+                  const id = nextNumericId("locatie", activeConfig.locations.map((l) => l.id));
+                  updateConfig({
+                    locations: [...activeConfig.locations, { id, name: `Locatie ${activeConfig.locations.length + 1}` }],
+                  });
+                }}
+              >
+                + Locatie
+              </button>
+              <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>
+                🔍 Zoek kroegen
+              </button>
+            </>
+          }
+        >
         <div className="editor-list">
           {activeConfig.locations.map((location, index) => (
             <div key={location.id} className="editor-row">

@@ -23,6 +23,18 @@ export interface TeamMember {
 export interface LocationV2 {
   id: Id;
   name: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  phone?: string;
+  website?: string;
+  rating?: number;
+  reviewCount?: number;
+  /** e.g. "€ 10-20" — passthrough from Serper places result. */
+  priceLevel?: string;
+  category?: string;
+  /** External provider id (e.g. Serper/Google CID) for dedup on search results. */
+  sourceId?: string;
 }
 
 export interface ActivityTypeV2 {
