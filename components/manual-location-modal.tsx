@@ -167,13 +167,21 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
     setSearchResults([]); // hide list after pick
     setSearched(false);
 
-    // Serper geeft soms geen adres terug bij name-only zoekopdrachten —
-    // probeer Nominatim reverse-geocode op de coords om alsnog een adres te krijgen.
-    if (!r.address && r.lat != null && r.lng != null) {
+    // Reverse-geocode op klik wanneer we coords hebben — Nominatim levert
+    // consistent "Straat 12, 1234 AB Stad" terug. Serper's adres-veld
+    // bevat soms alleen de straat (bv. "Havendijk 22"). Verkies Nominatim
+    // wanneer 't meer onderdelen heeft.
+    if (r.lat != null && r.lng != null) {
       setReverseGeocoding(true);
-      const addr = await reverseGeocode(r.lat, r.lng);
-      if (addr) setAddress(addr);
+      const fullAddress = await reverseGeocode(r.lat, r.lng);
       setReverseGeocoding(false);
+      if (fullAddress) {
+        const serperPartCount = r.address ? r.address.split(",").length : 0;
+        const nominatimPartCount = fullAddress.split(",").length;
+        if (nominatimPartCount > serperPartCount) {
+          setAddress(fullAddress);
+        }
+      }
     }
   }
 
