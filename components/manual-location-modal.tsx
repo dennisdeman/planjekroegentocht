@@ -51,13 +51,16 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
   const canSave = name.trim().length > 0 && (hasAddress || hasCoords);
 
   async function runSearch() {
-    const q = name.trim();
-    if (!q) return;
+    const nameQ = name.trim();
+    if (!nameQ) return;
+    // Combineer naam + adres in de query zodat Google de juiste regio pakt
+    // ("cafe aan de haven" alleen → Lock Haven, PA. "cafe aan de haven Culemborg" → NL).
+    const addressQ = address.trim();
+    const q = addressQ ? `${nameQ} ${addressQ}` : nameQ;
     setSearching(true);
     setSearchError(null);
     setSearchResults([]);
     try {
-      // Geen 'q=stad' maar 'q=naam' — Serper places werkt prima met naam-only.
       const res = await fetch(`/api/venues/search?q=${encodeURIComponent(q)}&type=bar`);
       const data = (await res.json()) as { results?: VenueResult[]; error?: string };
       if (!res.ok) {
@@ -81,9 +84,29 @@ export function ManualLocationModal({ onClose, onSave, initial }: Props) {
         { headers: { "Accept-Language": "nl" } }
       );
       if (!res.ok) return null;
-      const data = (await res.json()) as { display_name?: string; address?: Record<string, string> };
-      if (data.display_name) return data.display_name;
-      return null;
+      const data = (await res.json()) as {
+        display_name?: string;
+        address?: {
+          road?: string;
+          house_number?: string;
+          postcode?: string;
+          town?: string;
+          city?: string;
+          village?: string;
+          municipality?: string;
+        };
+      };
+      const a = data.address;
+      if (a) {
+        // NL-stijl: "Straat 12, 1234 AB Stad"
+        const streetPart = [a.road, a.house_number].filter(Boolean).join(" ");
+        const cityName = a.town ?? a.city ?? a.village ?? a.municipality;
+        const cityPart = [a.postcode, cityName].filter(Boolean).join(" ");
+        const formatted = [streetPart, cityPart].filter(Boolean).join(", ");
+        if (formatted) return formatted;
+      }
+      // Fallback: ruwe display_name als de gestructureerde velden ontbreken.
+      return data.display_name ?? null;
     } catch {
       return null;
     }
