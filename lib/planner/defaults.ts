@@ -24,6 +24,7 @@ export function createEmptyConfigV2(configId = `cfg-v2-${Date.now()}`): ConfigV2
       roundDurationMinutes: 30,
       transitionMinutes: 10,
       scheduleMode: "round-robin",
+      mode: "solo",
     },
   };
 }

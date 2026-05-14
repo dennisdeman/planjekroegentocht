@@ -1983,7 +1983,7 @@ function ConfiguratorContent() {
         </CollapsibleSection>
       </section>
 
-      <section className="card" id="section-stations">
+      <section className="card" id="section-stations" style={activeConfig.scheduleSettings.mode === "solo" ? { display: "none" } : undefined}>
         <CollapsibleSection title="Spellen per kroeg" count={activeConfig.stations.length} defaultOpen={activeConfig.stations.length === 0}>
         {activeConfig.locations.length === 0 ? (
           <p className="muted">Voeg eerst een veld toe.</p>

@@ -463,6 +463,7 @@ function SupervisorView({ data, refresh, token, showNameModal, onNameRegistered 
                       groupNameById={groupById}
                       token={token}
                       onSaved={refresh}
+                      mode={config.scheduleSettings.mode}
                     />
                   );
                 })}
@@ -479,6 +480,7 @@ function SupervisorView({ data, refresh, token, showNameModal, onNameRegistered 
             groupNameById={groupById}
             token={token}
             onSaved={refresh}
+            mode={config.scheduleSettings.mode}
           />
         )}
         {!currentSlot && (
@@ -504,6 +506,7 @@ function SupervisorView({ data, refresh, token, showNameModal, onNameRegistered 
             token={token}
             onSaved={refresh}
             readonly
+            mode={config.scheduleSettings.mode}
           />
         )}
       </main>
@@ -837,9 +840,10 @@ interface MatchPanelProps {
   token: string;
   onSaved: () => Promise<void>;
   readonly?: boolean;
+  mode?: "solo" | "vs";
 }
 
-function MatchPanel({ tone, label, slot, match, groupNameById, token, onSaved, readonly }: MatchPanelProps) {
+function MatchPanel({ tone, label, slot, match, groupNameById, token, onSaved, readonly, mode }: MatchPanelProps) {
   const [scoreA, setScoreA] = useState<number>(match.scoreA ?? 0);
   const [scoreB, setScoreB] = useState<number>(match.scoreB ?? 0);
   const [cancelMenuOpen, setCancelMenuOpen] = useState(false);
@@ -884,7 +888,11 @@ function MatchPanel({ tone, label, slot, match, groupNameById, token, onSaved, r
 
   const nameA = groupNameById.get(match.groupAId) ?? match.groupAId;
   const nameB = match.groupBId ? (groupNameById.get(match.groupBId) ?? match.groupBId) : null;
-  const isBye = !match.groupBId;
+  // In Vs-mode is een match zonder 2e groep een bye (rust). In Solo-mode is
+  // het juist een gewone challenge — 1 groep, 1 score. Daarom: bye is alleen
+  // van toepassing als er expliciet geen 2e groep is in Vs-modus.
+  const isSolo = mode === "solo";
+  const isBye = !match.groupBId && !isSolo;
   const isCancelled = match.status === "cancelled";
   const isCompleted = match.status === "completed";
 
@@ -961,23 +969,35 @@ function MatchPanel({ tone, label, slot, match, groupNameById, token, onSaved, r
         </div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "center" }}>
-            <ScoreColumn
-              name={nameA!}
-              score={scoreA}
-              onChange={setScoreA}
-              readonly={readonly || isCompleted}
-              hideScore={readonly && match.status === "scheduled"}
-            />
-            <div style={{ fontSize: "1.2rem", color: "var(--muted)" }}>–</div>
-            <ScoreColumn
-              name={nameB!}
-              score={scoreB}
-              onChange={setScoreB}
-              readonly={readonly || isCompleted}
-              hideScore={readonly && match.status === "scheduled"}
-            />
-          </div>
+          {isSolo ? (
+            <div style={{ display: "grid", justifyItems: "center", gap: 6 }}>
+              <ScoreColumn
+                name={nameA!}
+                score={scoreA}
+                onChange={setScoreA}
+                readonly={readonly || isCompleted}
+                hideScore={readonly && match.status === "scheduled"}
+              />
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "center" }}>
+              <ScoreColumn
+                name={nameA!}
+                score={scoreA}
+                onChange={setScoreA}
+                readonly={readonly || isCompleted}
+                hideScore={readonly && match.status === "scheduled"}
+              />
+              <div style={{ fontSize: "1.2rem", color: "var(--muted)" }}>–</div>
+              <ScoreColumn
+                name={nameB!}
+                score={scoreB}
+                onChange={setScoreB}
+                readonly={readonly || isCompleted}
+                hideScore={readonly && match.status === "scheduled"}
+              />
+            </div>
+          )}
 
           {!readonly && (
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", justifyContent: "space-between" }}>

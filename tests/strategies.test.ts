@@ -56,10 +56,10 @@ function makeConfig(overrides: Partial<ConfigBuilderParams> = {}): ConfigV2 {
 // ---------------------------------------------------------------------------
 
 test("STRATEGY_REGISTRY contains all active strategies", () => {
-  assert.equal(STRATEGY_REGISTRY.length, 6);
+  assert.equal(STRATEGY_REGISTRY.length, 7);
   assert.deepEqual(
     STRATEGY_REGISTRY.map((s) => s.name),
-    ["algebraic", "paired-rotation", "single-pool-rotation", "shuffled-rounds", "round-robin-exact", "round-robin-slot"]
+    ["solo-rotation", "algebraic", "paired-rotation", "single-pool-rotation", "shuffled-rounds", "round-robin-exact", "round-robin-slot"]
   );
 });
 

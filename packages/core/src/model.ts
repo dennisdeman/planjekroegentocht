@@ -76,6 +76,8 @@ export interface ConstraintsV2 {
 
 export type ScheduleMode = "all-spellen" | "round-robin";
 
+export type KroegentochtMode = "solo" | "vs";
+
 export interface ScheduleSettingsV2 {
   roundDurationMinutes: number;
   transitionMinutes: number;
@@ -87,6 +89,14 @@ export interface ScheduleSettingsV2 {
    * berekent. Verplicht; geen fallback. Zie `docs/generator-design.md` §1.3.
    */
   scheduleMode: ScheduleMode;
+  /**
+   * Kroegentocht-modus:
+   * - `solo`: elke groep loopt alleen, 1 groep per kroeg per slot (capaciteit 1).
+   * - `vs`: twee groepen ontmoeten elkaar per kroeg en spelen tegen elkaar (capaciteit 2).
+   * Default `solo`. Drijft station-capaciteit, generator-pad, UI-rendering en
+   * default scoring.
+   */
+  mode?: KroegentochtMode;
 }
 
 export interface PauseActivityV2 {

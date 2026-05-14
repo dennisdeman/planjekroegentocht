@@ -142,6 +142,8 @@ export interface ConfigBuilderParams {
 
   // Schedule
   scheduleMode: ScheduleMode;
+  /** Kroegentocht-modus: solo = 1 groep per kroeg, vs = 2 groepen per kroeg. Default 'solo'. */
+  mode?: "solo" | "vs";
   startTime: string;
   roundDurationMinutes: number;
   transitionMinutes: number;
@@ -259,13 +261,16 @@ export function buildConfig(params: ConfigBuilderParams): ConfigBuilderResult {
       }
     }
 
+    // Default "vs" voor legacy callers (tests/oudere data) zonder expliciete mode.
+    // Nieuwe configs via wizard/createEmpty zetten mode altijd expliciet.
+    const cap = params.mode === "solo" ? 1 : 2;
     stations = stationDefs.map((s, i) => ({
       id: `station-${i + 1}`,
       name: s.spel,
       locationId: locations.find((l) => l.name === s.location)?.id ?? locations[0]?.id ?? "",
       activityTypeId: activityTypes.find((a) => a.name === s.spel)?.id ?? activityTypes[0]?.id ?? "",
-      capacityGroupsMin: 2,
-      capacityGroupsMax: 2,
+      capacityGroupsMin: cap,
+      capacityGroupsMax: cap,
     }));
   }
 
@@ -342,6 +347,8 @@ export function buildConfig(params: ConfigBuilderParams): ConfigBuilderResult {
       roundDurationMinutes: params.roundDurationMinutes,
       transitionMinutes: params.transitionMinutes,
       scheduleMode: params.scheduleMode,
+      // Mode wordt alleen meegeschreven als de caller het expliciet zet.
+      ...(params.mode ? { mode: params.mode } : {}),
     },
     pauseActivity,
   };

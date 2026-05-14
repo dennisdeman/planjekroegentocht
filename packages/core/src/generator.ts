@@ -1869,9 +1869,16 @@ export function generateBestPlan(
   let best: { attempt: PlanAttempt; score: PlanScoreBreakdown } | null = null;
 
   const SLOW_STRATEGIES = new Set(["shuffled-rounds"]);
+  // Fallback "vs" voor configs zonder mode (legacy / oude tests).
+  // Nieuwe configs via createEmptyConfigV2 / wizard zetten mode expliciet.
+  const isSoloMode = config.scheduleSettings.mode === "solo";
 
   for (const strategy of STRATEGY_REGISTRY) {
     if (options.fastStrategiesOnly && SLOW_STRATEGIES.has(strategy.name)) continue;
+    // Mode-gate: alleen solo-rotation draait in Solo-modus; alle andere
+    // strategies veronderstellen capaciteit 2 (wedstrijd-pairing).
+    if (isSoloMode && strategy.name !== "solo-rotation") continue;
+    if (!isSoloMode && strategy.name === "solo-rotation") continue;
     if (!strategy.applicable(config, feasibility)) continue;
 
     let attempt: PlanAttempt | null = null;

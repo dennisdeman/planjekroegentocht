@@ -11,7 +11,7 @@ export interface LivePublicConfig {
   activityTypes: Array<{ id: string; name: string; baseId?: string | null }>;
   stations: Array<{ id: string; locationId: string; activityTypeId: string }>;
   timeslots: Array<{ id: string; index: number; kind: "active" | "break"; start: string; end: string; label?: string }>;
-  scheduleSettings: { roundDurationMinutes: number; transitionMinutes: number; scheduleMode: string };
+  scheduleSettings: { roundDurationMinutes: number; transitionMinutes: number; scheduleMode: string; mode?: "solo" | "vs" };
 }
 
 export interface LiveStateResponse {

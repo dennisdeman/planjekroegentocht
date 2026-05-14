@@ -46,6 +46,7 @@ type BaseParams = {
   startTime: string; roundDuration: number; transitionTime: number;
   stationLayout: "same" | "split"; locations: LocationLike[];
   scheduleMode: ScheduleMode;
+  mode?: "solo" | "vs";
   groupsPerPool?: number[];
 };
 
@@ -68,6 +69,7 @@ function buildTrialConfig(
     movementPolicy: base.movementPolicy,
     stationLayout: layout,
     scheduleMode: scheduleMode ?? base.scheduleMode,
+    mode: base.mode,
     startTime: base.startTime,
     roundDurationMinutes: base.roundDuration,
     transitionMinutes: base.transitionTime,
@@ -120,7 +122,8 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
 
   // Step 1
   const [name, setName] = useState("");
-  // Step 2
+  // Step 2 - Modus + Pools
+  const [mode, setMode] = useState<"solo" | "vs">("solo");
   const [usePools, setUsePools] = useState(false);
   const [poolNames, setPoolNames] = useState(["Route A", "Route B"]);
   // Step 3
@@ -275,7 +278,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
     setTimeout(async () => {
       try {
         const config = buildTrialConfig(
-          { name, usePools, poolNames, movementPolicy, repeatPolicy, startTime, roundDuration, transitionTime, stationLayout, locations, scheduleMode, groupsPerPool: usePools ? groupsPerPool : undefined },
+          { name, usePools, poolNames, movementPolicy, repeatPolicy, startTime, roundDuration, transitionTime, stationLayout, locations, scheduleMode, mode, groupsPerPool: usePools ? groupsPerPool : undefined },
           spellen, groupCount, stationLayout, locations, scheduleMode
         );
         const result = await proposeAlternatives(config, undefined, { maxAlternatives: 5 });
@@ -374,9 +377,8 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
 
   // Can we proceed?
   function canGoNext(): boolean {
-    if (step === 5 && !calc.enoughSpellen) return false;
-    if (step === 5 && spellen.length === 0) return false;
-    if (step === 6 && locations.length === 0) return false;
+    if (step === 5 && locations.length === 0) return false;
+    if (step === 6 && spellen.filter(Boolean).length < locations.length) return false;
     return true;
   }
 
@@ -394,6 +396,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
       movementPolicy,
       stationLayout,
       scheduleMode,
+      mode,
       startTime,
       roundDurationMinutes: roundDuration,
       transitionMinutes: transitionTime,
@@ -452,7 +455,32 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
         {/* Step 2: Pools */}
         {step === 2 && (
           <div className="form-grid">
-            <h3 style={{ margin: 0 }}>Wil je pools gebruiken?</h3>
+            <h3 style={{ margin: 0 }}>Hoe spelen de groepen?</h3>
+            <p className="muted" style={{ margin: 0 }}>
+              Solo of een onderlinge strijd? Dit bepaalt het hele rooster — bij Vs ontmoeten teams elkaar in dezelfde kroeg.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button
+                type="button"
+                className={mode === "solo" ? "start-mode-option is-active" : "start-mode-option"}
+                onClick={() => setMode("solo")}
+                style={{ textAlign: "left" }}
+              >
+                Solo — elke groep loopt apart
+                <small>Een groep is per ronde alleen in een kroeg en speelt het spel daar. Score per groep, geen tegenstanders.</small>
+              </button>
+              <button
+                type="button"
+                className={mode === "vs" ? "start-mode-option is-active" : "start-mode-option"}
+                onClick={() => setMode("vs")}
+                style={{ textAlign: "left" }}
+              >
+                Vs — twee groepen ontmoeten elkaar
+                <small>Twee groepen komen samen in een kroeg en spelen tegen elkaar. Klassieke winst/gelijk/verlies-scoring.</small>
+              </button>
+            </div>
+
+            <h3 style={{ margin: "16px 0 0" }}>Wil je pools gebruiken?</h3>
             <p className="muted" style={{ margin: 0 }}>
               Pools zijn parallelle routes binnen je kroegentocht. Bij grote groepen kan je twee routes naast elkaar laten lopen
               zodat de stad niet vol staat. Voor de meeste kroegentochten is &apos;Nee&apos; de juiste keuze.
@@ -566,86 +594,16 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           </div>
         )}
 
-        {/* Step 5: Spellen */}
+        {/* Step 5: Kroegen (was step 6 — komt nu vóór de spellen-toewijzing). */}
         {step === 5 && (
           <div className="form-grid">
-            <h3 style={{ margin: 0 }}>Welke spellen worden er gespeeld?</h3>
+            <h3 style={{ margin: 0 }}>Welke kroegen worden bezocht?</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Je hebt minimaal <strong>{calc.spellenNeeded} spellen</strong> nodig (voor {calc.stationsPerLocation} gelijktijdige spelletjes).
-              {calc.enoughSpellen
-                ? spellen.length > calc.spellenNeeded
-                  ? ` Je hebt er ${spellen.length} — alle spellen worden gebruikt voor meer variatie.`
-                  : ` Je hebt er ${spellen.length} — dat is voldoende.`
-                : ` Je hebt er nog ${calc.spelDeficit} te weinig.`}
-            </p>
-            <div>
-              {spellen.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
-                  <input value={s} onChange={(e) => { const next = [...spellen]; next[i] = e.target.value; setSpellen(next); }} style={{ flex: 1 }} />
-                  {spellen.length > 1 && <button type="button" className="btn-sm danger-button" onClick={() => setSpellen(spellen.filter((_, j) => j !== i))}>X</button>}
-                </div>
-              ))}
-              <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                <input value={newSpel} onChange={(e) => setNewSpel(e.target.value)} placeholder="Nieuw spel" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSpel(); } }} style={{ flex: 1 }} />
-                <button type="button" className="btn-sm" onClick={addSpel}>+</button>
-              </div>
-            </div>
-            {!calc.enoughSpellen && (
-              <div className="notice notice-warning" style={{ marginTop: 8 }}>
-                <p style={{ margin: 0 }}>Je hebt nog {calc.spelDeficit} spel{calc.spelDeficit > 1 ? "len" : ""} nodig. Voeg spellen toe om verder te gaan.</p>
-              </div>
-            )}
-            {calc.spellenExceedRounds && (
-              <div style={{ marginTop: 10 }}>
-                <p style={{ margin: "0 0 8px", fontWeight: 600 }}>
-                  Je hebt {spellen.length} spellen maar de round-robin geeft {calc.roundRobinRounds} rondes.
-                  Wat wil je?
-                </p>
-                <div style={{ display: "grid", gap: 8 }}>
-                  <button
-                    type="button"
-                    className={scheduleMode === "all-spellen" ? "start-mode-option is-active" : "start-mode-option"}
-                    onClick={() => setScheduleMode("all-spellen")}
-                    style={{ textAlign: "left" }}
-                  >
-                    Alle spellen spelen
-                    <small>
-                      {spellen.length} rondes. Elke groep speelt alle {spellen.length} spellen.
-                      {calc.matchupMaxNeeded > 1 ? ` Sommige tegenstanders komen ${calc.matchupMaxNeeded}x voor.` : ""}
-                    </small>
-                  </button>
-                  <button
-                    type="button"
-                    className={scheduleMode === "round-robin" ? "start-mode-option is-active" : "start-mode-option"}
-                    onClick={() => setScheduleMode("round-robin")}
-                    style={{ textAlign: "left" }}
-                  >
-                    Elke tegenstander 1x
-                    <small>
-                      {calc.roundRobinRounds} rondes. Elke groep speelt tegen elke tegenstander, maar mist {spellen.length - calc.roundRobinRounds} spel{spellen.length - calc.roundRobinRounds > 1 ? "len" : ""}.
-                    </small>
-                  </button>
-                </div>
-              </div>
-            )}
-            <div style={{ marginTop: 6 }}>
-              <p className="muted" style={{ margin: "0 0 4px", fontSize: "0.78rem" }}>Suggesties:</p>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {spelSuggestions.filter((s) => !spellen.includes(s)).slice(0, 8).map((s) => (
-                  <button key={s} type="button" className="btn-sm btn-ghost" onClick={() => setSpellen([...spellen, s])}>+ {s}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 6: Locations */}
-        {step === 6 && (
-          <div className="form-grid">
-            <h3 style={{ margin: 0 }}>Op welke locaties wordt er gespeeld?</h3>
-            <p className="muted" style={{ margin: 0 }}>
-              Een locatie is een kroeg of café waar teams een spel spelen. Gebruik <strong>Zoek kroegen</strong> om
+              Elke kroeg krijgt straks 1 spel toegewezen. Gebruik <strong>Zoek kroegen</strong> om
               kroegen via Google te zoeken, of voeg handmatig namen toe.
+              {mode === "solo"
+                ? ` Bij Solo-modus heb je minimaal ${groupCount} kroegen nodig (1 per groep per ronde).`
+                : ` Bij Vs-modus heb je minimaal ${Math.ceil(groupCount / 2)} kroegen nodig (2 groepen per kroeg).`}
               {usePools && movementPolicy === "blocks" ? ` Bij blokken heb je minimaal ${poolCount} locaties nodig (1 per pool).` : ""}
             </p>
             <div>
@@ -667,7 +625,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                 </div>
               ))}
               <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nieuwe locatie" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLocation(); } }} style={{ flex: 1 }} />
+                <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nieuwe kroeg" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLocation(); } }} style={{ flex: 1 }} />
                 <button type="button" className="btn-sm" onClick={addLocation}>+</button>
                 <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>🔍 Zoek kroegen</button>
               </div>
@@ -675,6 +633,72 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
             {usePools && movementPolicy === "blocks" && locations.length < poolCount && (
               <div className="notice notice-warning" style={{ marginTop: 8 }}>
                 <p style={{ margin: 0 }}>Bij blokken heb je minimaal {poolCount} locaties nodig. Voeg nog {poolCount - locations.length} locatie{poolCount - locations.length > 1 ? "s" : ""} toe.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 6: Spel per kroeg (was step 5 — paradigm change: 1-op-1 mapping). */}
+        {step === 6 && (
+          <div className="form-grid">
+            <h3 style={{ margin: 0 }}>Welk spel speel je in elke kroeg?</h3>
+            <p className="muted" style={{ margin: 0 }}>
+              Kies per kroeg een spel uit de bibliotheek, of klik <strong>Vul automatisch</strong> om
+              ze in volgorde toe te wijzen.
+            </p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <button
+                type="button"
+                className="btn-sm btn-ghost"
+                onClick={() => {
+                  // Vul automatisch: 1 spel per locatie, in volgorde uit de bibliotheek (cyclisch indien nodig).
+                  if (locations.length === 0 || spelSuggestions.length === 0) return;
+                  const next: string[] = [];
+                  for (let i = 0; i < locations.length; i++) {
+                    next.push(spelSuggestions[i % spelSuggestions.length]);
+                  }
+                  setSpellen(next);
+                }}
+              >
+                ✨ Vul automatisch
+              </button>
+              {spelSuggestions.length === 0 && (
+                <span className="muted" style={{ fontSize: "0.82rem", alignSelf: "center" }}>
+                  Geen spellen in je bibliotheek. Voeg ze toe via Configurator → Spellen.
+                </span>
+              )}
+            </div>
+            <div>
+              {locations.length === 0 ? (
+                <p className="muted">Voeg eerst kroegen toe in de vorige stap.</p>
+              ) : (
+                locations.map((l, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 6, alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{l.name}</div>
+                      {l.address && <div className="muted" style={{ fontSize: "0.78rem" }}>{l.address}</div>}
+                    </div>
+                    <select
+                      value={spellen[i] ?? ""}
+                      onChange={(e) => {
+                        const next = [...spellen];
+                        while (next.length <= i) next.push("");
+                        next[i] = e.target.value;
+                        setSpellen(next);
+                      }}
+                    >
+                      <option value="">— kies een spel —</option>
+                      {spelSuggestions.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))
+              )}
+            </div>
+            {locations.length > 0 && spellen.filter(Boolean).length < locations.length && (
+              <div className="notice notice-warning" style={{ marginTop: 8 }}>
+                <p style={{ margin: 0 }}>Nog niet alle kroegen hebben een spel toegewezen.</p>
               </div>
             )}
           </div>

@@ -62,6 +62,7 @@ import { singlePoolRotationStrategy } from "./single-pool-rotation";
 import { roundRobinExactStrategy } from "./round-robin-exact";
 import { roundRobinSlotStrategy } from "./round-robin-slot";
 import { shuffledRoundsStrategy } from "./shuffled-rounds";
+import { soloRotationStrategy } from "./solo-rotation";
 
 export { algebraicStrategy } from "./algebraic";
 export { pairedRotationStrategy } from "./paired-rotation";
@@ -75,6 +76,7 @@ export { byeAssistedStrategy } from "./bye-assisted";
 export { roundRobinExactStrategy } from "./round-robin-exact";
 export { roundRobinSlotStrategy } from "./round-robin-slot";
 export { shuffledRoundsStrategy } from "./shuffled-rounds";
+export { soloRotationStrategy } from "./solo-rotation";
 
 /**
  * Geordend van "meest specifiek / verwacht hoogste kwaliteit" naar "meest
@@ -83,6 +85,7 @@ export { shuffledRoundsStrategy } from "./shuffled-rounds";
  * wel invloed hebben op welke als eerste klaar is bij een tijdsbudget.
  */
 export const STRATEGY_REGISTRY: PlanStrategy[] = [
+  soloRotationStrategy,
   algebraicStrategy,
   pairedRotationStrategy,
   singlePoolRotationStrategy,
