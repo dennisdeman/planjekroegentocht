@@ -535,9 +535,10 @@ function ConfiguratorContent() {
     }
   }, [configId, loadConfig]);
 
-  // Refresh member-count badges whenever the config or modal changes.
+  // Refresh member-count badges whenever the active config or modal changes.
   useEffect(() => {
-    if (!configId) {
+    const activeId = activeConfig.id;
+    if (!activeId) {
       setGroupMemberCounts({});
       return;
     }
@@ -545,7 +546,7 @@ function ConfiguratorContent() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch(`/api/team-members/assignments?configId=${encodeURIComponent(configId)}`);
+        const res = await fetch(`/api/team-members/assignments?configId=${encodeURIComponent(activeId)}`);
         if (!res.ok) return;
         const data = (await res.json()) as { assignments: { memberId: string; groupId: string }[] };
         if (cancelled) return;
@@ -557,7 +558,7 @@ function ConfiguratorContent() {
       }
     })();
     return () => { cancelled = true; };
-  }, [configId, editingMembersGroupId]);
+  }, [activeConfig.id, editingMembersGroupId]);
 
   useEffect(() => {
     setSegmentsRaw(pretty(activeConfig.segments));
@@ -1229,12 +1230,12 @@ function ConfiguratorContent() {
 
       {upgradeMessage && <UpgradeModal message={upgradeMessage} onClose={() => setUpgradeMessage(null)} />}
 
-      {editingMembersGroupId && configId && (() => {
+      {editingMembersGroupId && activeConfig.id && (() => {
         const group = activeConfig.groups.find((g) => g.id === editingMembersGroupId);
         if (!group) return null;
         return (
           <TeamMembersEditor
-            configId={configId}
+            configId={activeConfig.id}
             groupId={group.id}
             groupName={group.name}
             onClose={() => setEditingMembersGroupId(null)}
@@ -1828,9 +1829,12 @@ function ConfiguratorContent() {
                     <button
                       type="button"
                       className="btn-sm btn-ghost"
-                      onClick={() => setEditingMembersGroupId(group.id)}
-                      disabled={!configId}
-                      title={!configId ? "Sla eerst de config op" : "Beheer leden"}
+                      onClick={async () => {
+                        // Ensure config is persisted so the FK on group_memberships resolves.
+                        await saveCurrent();
+                        setEditingMembersGroupId(group.id);
+                      }}
+                      title="Beheer leden"
                     >
                       {groupMemberCounts[group.id] ?? 0} leden
                     </button>
