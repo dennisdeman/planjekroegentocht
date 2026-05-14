@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { parseParticipantsCsv } from "@core";
+import { confirmDialog } from "@ui/ui/confirm-dialog";
 
 export interface TeamMemberView {
   id: string;
@@ -239,7 +240,16 @@ export function TeamMembersEditor({ configId, groupId, groupName, onClose }: Pro
                         <button
                           type="button"
                           className="btn-sm danger-button"
-                          onClick={() => removeFromGroup(m.id)}
+                          onClick={async () => {
+                            const ok = await confirmDialog({
+                              title: "Lid verwijderen uit groep",
+                              message: `"${m.name}" uit ${groupName} halen? (Het lid blijft in je adresboek.)`,
+                              confirmLabel: "Verwijder",
+                              variant: "danger",
+                            });
+                            if (!ok) return;
+                            void removeFromGroup(m.id);
+                          }}
                           disabled={busy}
                         >
                           Verwijder

@@ -499,7 +499,9 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                 {poolNames.map((pn, i) => (
                   <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}>
                     <input value={pn} onChange={(e) => { const next = [...poolNames]; next[i] = e.target.value; setPoolNames(next); }} />
-                    {poolNames.length > 2 && <button type="button" className="btn-sm danger-button" onClick={() => {
+                    {poolNames.length > 2 && <button type="button" className="btn-sm danger-button" onClick={async () => {
+                      const ok = await confirmDialog({ title: "Route verwijderen", message: `Route "${pn}" verwijderen?`, confirmLabel: "Verwijder", variant: "danger" });
+                      if (!ok) return;
                       const nextNames = poolNames.filter((_, j) => j !== i);
                       setPoolNames(nextNames);
                       setGroupsPerPool(distributeGroups(groupCount, nextNames));

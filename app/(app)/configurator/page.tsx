@@ -1553,7 +1553,11 @@ function ConfiguratorContent() {
                       <button type="button" className="btn-sm btn-primary" onClick={() => loadTemplate(tpl)}>
                         Laden
                       </button>
-                      <button type="button" className="btn-sm danger-button" onClick={() => void deleteTemplate(tpl.id)}>
+                      <button type="button" className="btn-sm danger-button" onClick={async () => {
+                        const ok = await confirmDialog({ title: "Sjabloon verwijderen", message: `Sjabloon "${tpl.name}" verwijderen?`, confirmLabel: "Verwijderen", variant: "danger" });
+                        if (!ok) return;
+                        void deleteTemplate(tpl.id);
+                      }}>
                         Verwijder
                       </button>
                     </div>
@@ -1895,7 +1899,16 @@ function ConfiguratorContent() {
                     <button
                       type="button"
                       className="danger-button"
-                      onClick={() => updateGroups(activeConfig.groups.filter((item) => item.id !== group.id))}
+                      onClick={async () => {
+                        const ok = await confirmDialog({
+                          title: "Groep verwijderen",
+                          message: `Groep "${group.name}" verwijderen? Leden-toewijzingen voor deze groep gaan ook verloren.`,
+                          confirmLabel: "Verwijder",
+                          variant: "danger",
+                        });
+                        if (!ok) return;
+                        updateGroups(activeConfig.groups.filter((item) => item.id !== group.id));
+                      }}
                     >
                       Verwijder
                     </button>
@@ -1925,7 +1938,14 @@ function ConfiguratorContent() {
               <button
                 type="button"
                 className="danger-button"
-                onClick={() => {
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: "Spel verwijderen",
+                    message: `Spel "${activityType.name}" verwijderen? Stations met dit spel krijgen een ander spel toegewezen.`,
+                    confirmLabel: "Verwijder",
+                    variant: "danger",
+                  });
+                  if (!ok) return;
                   const nextTypes = activeConfig.activityTypes.filter((item) => item.id !== activityType.id);
                   const fallbackType = nextTypes[0]?.id;
                   const nextStations = activeConfig.stations
@@ -2118,11 +2138,18 @@ function ConfiguratorContent() {
                             <button
                               type="button"
                               className="danger-button"
-                              onClick={() =>
+                              onClick={async () => {
+                                const ok = await confirmDialog({
+                                  title: "Station verwijderen",
+                                  message: `Station "${station.name ?? station.id}" verwijderen?`,
+                                  confirmLabel: "Verwijder",
+                                  variant: "danger",
+                                });
+                                if (!ok) return;
                                 updateConfig({
                                   stations: activeConfig.stations.filter((item) => item.id !== station.id),
-                                })
-                              }
+                                });
+                              }}
                             >
                               Verwijder
                             </button>
@@ -2375,7 +2402,14 @@ function ConfiguratorContent() {
                       <button
                         type="button"
                         className="danger-button"
-                        onClick={() => {
+                        onClick={async () => {
+                          const ok = await confirmDialog({
+                            title: "Tijdslot verwijderen",
+                            message: `Tijdslot "${slot.label ?? slot.id}" verwijderen?`,
+                            confirmLabel: "Verwijder",
+                            variant: "danger",
+                          });
+                          if (!ok) return;
                           const nextTimeslots = reindexTimeslots(
                             activeConfig.timeslots.filter((item) => item.id !== slot.id)
                           );
@@ -2463,11 +2497,18 @@ function ConfiguratorContent() {
                 <button
                   type="button"
                   className="danger-button"
-                  onClick={() =>
+                  onClick={async () => {
+                    const ok = await confirmDialog({
+                      title: "Blok verwijderen",
+                      message: `Locatieblok "${block.name ?? block.id}" verwijderen?`,
+                      confirmLabel: "Verwijder",
+                      variant: "danger",
+                    });
+                    if (!ok) return;
                     updateConfig({
                       locationBlocks: (activeConfig.locationBlocks ?? []).filter((item) => item.id !== block.id),
-                    })
-                  }
+                    });
+                  }}
                 >
                   Verwijder
                 </button>
