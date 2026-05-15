@@ -35,6 +35,9 @@ export function calculateSchedule(
   stationLayout: "same" | "split",
   /** Actual per-pool group counts. When provided, uses largest pool for schedule math. */
   poolSizes?: number[],
+  /** Auto-insert pauze-slot halverwege. Default false — voor kroegentocht is een pauze
+   *  meestal een eet- of stadsmoment dat de gebruiker zelf aangeeft. */
+  enableBreak?: boolean,
 ): CalcResult {
   // Use largest pool for schedule math (determines rounds, stations, etc.)
   const largestPool = poolSizes?.length
@@ -102,7 +105,7 @@ export function calculateSchedule(
   const smallestPoolRounds = smallestPool - 1;
   const matchupMaxNeeded = smallestPoolRounds > 0 ? Math.ceil(roundsNeeded / smallestPoolRounds) : 1;
 
-  const breakAfterSlot = roundsNeeded >= 4 ? Math.floor(roundsNeeded / 2) : 0;
+  const breakAfterSlot = (enableBreak ?? true) && roundsNeeded >= 4 ? Math.floor(roundsNeeded / 2) : 0;
   const totalActiveSlots = roundsNeeded;
   const totalSlots = breakAfterSlot > 0 ? totalActiveSlots + 1 : totalActiveSlots;
 
@@ -157,6 +160,9 @@ export interface ConfigBuilderParams {
 
   // Pause activity (Phase 2 — optional)
   pauseActivityName?: string;
+
+  /** Auto-insert pauze-slot halverwege het schema. Default false. */
+  enableBreak?: boolean;
 }
 
 export interface ConfigBuilderResult {
@@ -175,6 +181,7 @@ export function buildConfig(params: ConfigBuilderParams): ConfigBuilderResult {
     params.groupCount, poolCount, params.spellen.length,
     effectiveMovement, locationNames.length, params.scheduleMode, params.stationLayout,
     params.groupsPerPool,
+    params.enableBreak ?? true,
   );
 
   const configId = `cfg-v2-${Date.now()}`;

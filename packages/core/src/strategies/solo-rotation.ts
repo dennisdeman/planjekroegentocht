@@ -67,21 +67,32 @@ export const soloRotationStrategy: PlanStrategy = {
 
       for (let ri = 0; ri < activeTimeslots.length; ri++) {
         const timeslot = activeTimeslots[ri];
-        // Cyclische rotatie: groep i komt in ronde r bij station ((i + r) mod M).
-        // Bij N > M roteert er ook een bye-vinger zodat over de rondes andere groepen rusten.
-        const offsetForBye = ri % Math.max(1, N);
+        // Twee gevallen:
+        //   N <= M (genoeg of teveel kroegen voor de groepen): elke groep speelt
+        //     elke ronde, station = (gi + ri) mod M. Sommige stations blijven leeg.
+        //   N > M (meer groepen dan kroegen): groepen die positie >= M krijgen
+        //     in de geroteerde rij ((gi - ri) mod N) zitten op bye. Speelposities
+        //     0..M-1 worden 1-op-1 op stations gemapt.
         for (let gi = 0; gi < N; gi++) {
-          const cyclicGi = (gi + offsetForBye) % N;
-          if (cyclicGi >= M) {
-            // Bye voor deze groep in deze ronde.
+          if (N <= M) {
+            const stationIdx = (gi + ri) % M;
+            allocations.push({
+              id: `alloc-solo-${allocations.length + 1}`,
+              timeslotId: timeslot.id,
+              stationId: segStations[stationIdx].id,
+              groupIds: [groupIds[gi]],
+            });
+            continue;
+          }
+          const positionInRound = ((gi - ri) % N + N) % N;
+          if (positionInRound >= M) {
             byesByTimeslot[timeslot.id].push(groupIds[gi]);
             continue;
           }
-          const stationIdx = (gi + ri) % M;
           allocations.push({
             id: `alloc-solo-${allocations.length + 1}`,
             timeslotId: timeslot.id,
-            stationId: segStations[stationIdx].id,
+            stationId: segStations[positionInRound].id,
             groupIds: [groupIds[gi]],
           });
         }

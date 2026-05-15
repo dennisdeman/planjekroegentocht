@@ -71,6 +71,7 @@ interface PlannerState {
     options?: AutoGroupOptions
   ) => void;
   generatePlan: () => Promise<boolean>;
+  previewDiagnosis: () => ConfigDiagnosis;
   validateCurrentPlan: () => void;
   applyPlanCommand: (command: PlanCommandV2) => boolean;
   saveCurrent: () => Promise<void>;
@@ -81,11 +82,31 @@ interface PlannerState {
   showMessage: (message: string, type?: MessageType) => void;
 }
 
+export interface ConfigWarning {
+  /** Korte titel / wat is het probleem */
+  title: string;
+  /** Uitleg wat dit betekent voor de planning */
+  body: string;
+  /** Concrete suggestie wat je kunt aanpassen */
+  advice: string;
+}
+
+export interface ConfigDiagnosis {
+  /** Blokkerende fout — generatie wordt afgebroken. */
+  error: string | null;
+  /** Waarschuwingen — generatie loopt door, maar gebruiker wordt geïnformeerd. */
+  warnings: ConfigWarning[];
+}
+
 /**
  * Pre-validatie: detecteer configuratiefouten die de generator laten falen,
- * en geef een specifieke foutmelding terug (of null als alles ok is).
+ * en optionele waarschuwingen voor edge-cases.
  */
-function diagnoseConfig(config: ConfigV2): string | null {
+function diagnoseConfig(config: ConfigV2): ConfigDiagnosis {
+  const warnings: ConfigWarning[] = [];
+  const isSolo = config.scheduleSettings.mode === "solo";
+  const activeSlots = config.timeslots.filter((t) => t.kind === "active").length;
+
   // Groepen per pool berekenen
   const poolGroups: Record<string, number> = {};
   for (const g of config.groups) {
@@ -99,44 +120,98 @@ function diagnoseConfig(config: ConfigV2): string | null {
     if (s.activityTypeId === "activity-pause") continue;
     stationsPerLoc[s.locationId] = (stationsPerLoc[s.locationId] ?? 0) + 1;
   }
+  const totalStations = Object.values(stationsPerLoc).reduce((a, b) => a + b, 0);
 
-  // Bij blocks-mode: check of elke pool genoeg stations heeft op zijn locatie
-  if (config.movementPolicy === "blocks" && config.locationBlocks?.length) {
-    for (const block of config.locationBlocks) {
-      for (const [segId, locId] of Object.entries(block.segmentLocationMap)) {
-        const groupCount = poolGroups[segId] ?? 0;
-        const matchesNeeded = Math.floor(groupCount / 2);
-        const stationCount = stationsPerLoc[locId] ?? 0;
-        if (matchesNeeded > stationCount) {
-          const segName = config.segments.find((s) => s.id === segId)?.name ?? segId;
-          const locName = config.locations.find((l) => l.id === locId)?.name ?? locId;
-          return `${segName} heeft ${groupCount} groepen (${matchesNeeded} spelletjes per ronde), maar ${locName} heeft maar ${stationCount} stations. Voeg ${matchesNeeded - stationCount} spel${matchesNeeded - stationCount > 1 ? "en" : ""} toe, of verplaats groepen naar de andere pool.`;
+  // Solo-specifieke pre-checks (geen "matches per ronde", elke groep speelt 1x per slot)
+  if (isSolo) {
+    if (config.locations.length === 0) {
+      return { error: "Geen kroegen toegevoegd. Voeg minstens 1 locatie toe.", warnings };
+    }
+    if (totalStations === 0) {
+      return { error: "Geen spellen gekoppeld aan kroegen. Klik op een kroeg om een spel te kiezen.", warnings };
+    }
+    const totalGroups = config.groups.length;
+    if (totalGroups === 0) {
+      return { error: "Geen groepen toegevoegd. Voeg minstens 1 groep toe.", warnings };
+    }
+    if (
+      activeSlots > totalStations &&
+      config.constraints.avoidRepeatActivityType === "hard"
+    ) {
+      return {
+        error: `Er zijn ${activeSlots} slots maar maar ${totalStations} kroegen. Groepen moeten kroegen herbezoeken, maar "Herhaal hetzelfde spel" staat op Verbieden. Verhoog kroegen, verlaag slots, of zet 'Herhaal spel' op Toestaan/Liever niet.`,
+        warnings,
+      };
+    }
+    // Niet-blokkerende waarschuwingen voor Solo:
+    if (totalGroups > totalStations) {
+      const onBye = totalGroups - totalStations;
+      warnings.push({
+        title: `Meer groepen dan kroegen (${totalGroups} > ${totalStations})`,
+        body: `Er passen maar ${totalStations} groepen tegelijk in een kroeg (1 per kroeg). De resterende ${onBye} groep${onBye > 1 ? "en" : ""} ${onBye > 1 ? "zitten" : "zit"} per ronde op bye en speel${onBye > 1 ? "en" : "t"} dus niet mee. Over de rondes wisselt wie er op bye zit.`,
+        advice: `Wil je dat alle groepen elke ronde spelen? Voeg ${onBye} kroeg${onBye > 1 ? "en" : ""} extra toe, of verklein de groepen door er enkele samen te voegen.`,
+      });
+    }
+    if (activeSlots > totalStations && config.constraints.avoidRepeatActivityType !== "hard") {
+      const extra = activeSlots - totalStations;
+      warnings.push({
+        title: `Meer slots dan kroegen (${activeSlots} > ${totalStations})`,
+        body: `Je hebt ${activeSlots} slots gepland maar maar ${totalStations} kroegen. Groepen moeten daarom in ${extra} slot${extra > 1 ? "s" : ""} terug naar een eerder bezochte kroeg (en dus hetzelfde spel nogmaals spelen).`,
+        advice: `Wil je elke kroeg precies 1× per groep? Verlaag het aantal slots naar ${totalStations}, of voeg ${extra} extra kroeg${extra > 1 ? "en" : ""} toe.`,
+      });
+    }
+    if (activeSlots < totalStations) {
+      const unvisited = totalStations - activeSlots;
+      warnings.push({
+        title: `Minder slots dan kroegen (${activeSlots} < ${totalStations})`,
+        body: `Je hebt ${totalStations} kroegen maar maar ${activeSlots} slots. Elke groep bezoekt dus maar ${activeSlots} van de ${totalStations} kroegen — ${unvisited} kroeg${unvisited > 1 ? "en blijven" : " blijft"} ongebruikt voor sommige groepen.`,
+        advice: `Wil je dat elke groep álle kroegen bezoekt? Verhoog het aantal slots naar ${totalStations}, of verwijder ${unvisited} kroeg${unvisited > 1 ? "en" : ""}.`,
+      });
+    }
+    // Skip de Vs-specifieke checks hieronder.
+  } else {
+    // Bij blocks-mode: check of elke pool genoeg stations heeft op zijn locatie
+    if (config.movementPolicy === "blocks" && config.locationBlocks?.length) {
+      for (const block of config.locationBlocks) {
+        for (const [segId, locId] of Object.entries(block.segmentLocationMap)) {
+          const groupCount = poolGroups[segId] ?? 0;
+          const matchesNeeded = Math.floor(groupCount / 2);
+          const stationCount = stationsPerLoc[locId] ?? 0;
+          if (matchesNeeded > stationCount) {
+            const segName = config.segments.find((s) => s.id === segId)?.name ?? segId;
+            const locName = config.locations.find((l) => l.id === locId)?.name ?? locId;
+            return {
+              error: `${segName} heeft ${groupCount} groepen (${matchesNeeded} spelletjes per ronde), maar ${locName} heeft maar ${stationCount} stations. Voeg ${matchesNeeded - stationCount} spel${matchesNeeded - stationCount > 1 ? "en" : ""} toe, of verplaats groepen naar de andere pool.`,
+              warnings,
+            };
+          }
+        }
+      }
+    }
+
+    // Zonder blocks: check totaal stations vs totaal spelletjes
+    if (config.movementPolicy !== "blocks") {
+      for (const [pool, count] of Object.entries(poolGroups)) {
+        const matchesNeeded = Math.floor(count / 2);
+        const poolCount = Object.keys(poolGroups).length;
+        const stationsForPool = Math.floor(totalStations / Math.max(poolCount, 1));
+        if (matchesNeeded > stationsForPool) {
+          const segName = config.segments.find((s) => s.id === pool)?.name ?? (pool === "__default__" ? "De configuratie" : pool);
+          return {
+            error: `${segName} heeft ${count} groepen (${matchesNeeded} spelletjes per ronde), maar er zijn maar ${stationsForPool} stations beschikbaar. Voeg spellen toe of verplaats groepen.`,
+            warnings,
+          };
         }
       }
     }
   }
 
-  // Zonder blocks: check totaal stations vs totaal spelletjes
-  if (config.movementPolicy !== "blocks") {
-    for (const [pool, count] of Object.entries(poolGroups)) {
-      const matchesNeeded = Math.floor(count / 2);
-      const totalStations = Object.values(stationsPerLoc).reduce((a, b) => a + b, 0);
-      const poolCount = Object.keys(poolGroups).length;
-      const stationsForPool = Math.floor(totalStations / Math.max(poolCount, 1));
-      if (matchesNeeded > stationsForPool) {
-        const segName = config.segments.find((s) => s.id === pool)?.name ?? (pool === "__default__" ? "De configuratie" : pool);
-        return `${segName} heeft ${count} groepen (${matchesNeeded} spelletjes per ronde), maar er zijn maar ${stationsForPool} stations beschikbaar. Voeg spellen toe of verplaats groepen.`;
-      }
-    }
-  }
-
-  // Check: genoeg actieve tijdsloten
-  const activeSlots = config.timeslots.filter((t) => t.kind === "active").length;
+  // Check: genoeg actieve tijdsloten (geldt voor beide modi)
   if (activeSlots === 0) {
-    return "Er zijn geen actieve tijdsloten. Voeg rondes toe in het tijdschema.";
+    return { error: "Er zijn geen actieve tijdsloten. Voeg rondes toe in het tijdschema.", warnings };
   }
 
-  return null;
+  return { error: null, warnings };
 }
 
 function chooseStorage(mode: StorageMode): PlannerStorage {
@@ -486,6 +561,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     });
   },
 
+  previewDiagnosis: () => {
+    const { activeConfig } = get();
+    return diagnoseConfig(activeConfig);
+  },
+
   generatePlan: async () => {
     const { activeConfig, storage } = get();
     if (
@@ -502,9 +582,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     }
 
     // Pre-validatie: check of er genoeg stations zijn per locatie voor de pools
-    const preCheckError = diagnoseConfig(activeConfig);
-    if (preCheckError) {
-      set({ uiMessage: { text: preCheckError, type: "error" } });
+    const diagnosis = diagnoseConfig(activeConfig);
+    if (diagnosis.error) {
+      set({ uiMessage: { text: diagnosis.error, type: "error" } });
       return false;
     }
 

@@ -613,7 +613,7 @@ function LivePhaseIndicator({ info }: { info: LivePhaseInfo }) {
         {statusLabel}{roundLabel && ` · ${roundLabel}`}
       </div>
       {timeLabel ? (
-        <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1.3rem", color: "var(--accent, #ff6b00)" }}>
+        <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1.3rem", color: "var(--accent, #D44017)" }}>
           {timeLabel}
         </div>
       ) : info.startedAt ? (
@@ -866,7 +866,7 @@ function ScheduledCountdown({ startedAt }: { startedAt: string }) {
       <div className="muted" style={{ fontSize: "0.72rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>
         Live over
       </div>
-      <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1.3rem", color: "var(--accent, #ff6b00)" }}>
+      <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1.3rem", color: "var(--accent, #D44017)" }}>
         {timeLabel}
       </div>
     </div>

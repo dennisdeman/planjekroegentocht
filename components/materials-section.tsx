@@ -95,7 +95,7 @@ function StationView({ stationMaterials }: { stationMaterials: StationMaterials[
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <strong style={{ fontSize: "0.9rem" }}>{station.stationName}</strong>
               {station.isRenamed && spel && (
-                <span style={{ fontSize: "0.75rem", background: "rgba(255, 107, 0, 0.1)", color: "var(--accent)", padding: "1px 6px", borderRadius: 4 }}>
+                <span style={{ fontSize: "0.75rem", background: "rgba(212, 64, 23, 0.1)", color: "var(--accent)", padding: "1px 6px", borderRadius: 4 }}>
                   hernoemd van {spel.name}
                 </span>
               )}
@@ -155,7 +155,7 @@ function EditView({ config, onUpdateOverrides, orgMaterials }: { config: ConfigV
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <strong style={{ fontSize: "0.92rem" }}>{activity.name}</strong>
               {isRenamed && spel && (
-                <span style={{ fontSize: "0.75rem", background: "rgba(255, 107, 0, 0.1)", color: "var(--accent)", padding: "1px 6px", borderRadius: 4 }}>
+                <span style={{ fontSize: "0.75rem", background: "rgba(212, 64, 23, 0.1)", color: "var(--accent)", padding: "1px 6px", borderRadius: 4 }}>
                   hernoemd van {spel.name}
                 </span>
               )}

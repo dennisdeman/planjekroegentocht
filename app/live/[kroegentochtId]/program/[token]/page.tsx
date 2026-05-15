@@ -257,7 +257,7 @@ function ProgramView({ data }: { data: NonNullable<ReturnType<typeof useLiveStat
                   gap: 10,
                   padding: "10px 14px",
                   borderRadius: 8,
-                  background: isNow ? "rgba(74, 144, 226, 0.08)" : "var(--bg-offset, #f5f7fa)",
+                  background: isNow ? "rgba(14, 46, 80, 0.08)" : "var(--bg-offset, #f5f7fa)",
                   border: isNow ? "2px solid var(--brand)" : "1px dashed var(--line)",
                   scrollMarginTop: 12,
                 }}
@@ -402,7 +402,7 @@ function MatchRow({
         alignItems: "center",
         padding: "8px 10px",
         borderRadius: 5,
-        background: isHighlighted ? "rgba(74, 144, 226, 0.08)" : "transparent",
+        background: isHighlighted ? "rgba(14, 46, 80, 0.08)" : "transparent",
         border: "1px solid var(--line)",
       }}
     >

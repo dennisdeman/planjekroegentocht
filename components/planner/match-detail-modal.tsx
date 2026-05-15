@@ -282,7 +282,7 @@ function MatchHistory({ kroegentochtId, matchId, supervisorNames }: {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", color: "var(--brand, #4A90E2)", padding: 0 }}
+        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", color: "var(--brand, #0E2E50)", padding: 0 }}
       >
         {open ? "▾ Geschiedenis verbergen" : "▸ Geschiedenis"}
       </button>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { assertConfigV2, findSpelByName, type ConfigV2, type Id, type LocationBlockV2, type ParticipantRow, type TimeslotV2 } from "@core";
 import { splitGroupsAcrossSegments, BUILT_IN_PRESETS } from "@lib/planner/defaults";
-import { usePlannerStore } from "@lib/planner/store";
+import { usePlannerStore, type ConfigWarning } from "@lib/planner/store";
+import { GenerationWarningsModal } from "@ui/generation-warnings-modal";
 import { AddSlotModal } from "@ui/add-slot-modal";
 import { ConfigWizard } from "@ui/config-wizard";
 import { UnsavedChangesGuard } from "@ui/unsaved-changes-guard";
@@ -18,6 +19,14 @@ import { confirmDialog } from "@ui/ui/confirm-dialog";
 import { TeamMembersEditor } from "@ui/team-members-editor";
 import { VenueSearchModal } from "@ui/venue-search-modal";
 import { ManualLocationModal } from "@ui/manual-location-modal";
+import dynamic from "next/dynamic";
+
+const RouteMapModal = dynamic(
+  () => import("@ui/route-map-modal").then((m) => m.RouteMapModal),
+  { ssr: false }
+);
+import { useWalkingMatrix, lookupSeconds } from "@lib/use-walking-matrix";
+import { getVenueTypeBadge } from "@lib/venue-type-badge";
 import { SpelPickerModal } from "@ui/spel-picker-modal";
 
 function pretty(value: unknown): string {
@@ -112,6 +121,112 @@ function nextNumericId(prefix: string, existingIds: Id[]): Id {
   return `${prefix}-${seq}`;
 }
 
+function haversineMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Hemelsbreed → looptijd: stadsloop ~80 m/min, factor 1.3 voor bochten/bruggen.
+function walkingMinutesBetween(
+  a: { lat?: number; lng?: number },
+  b: { lat?: number; lng?: number }
+): number | null {
+  if (a.lat == null || a.lng == null || b.lat == null || b.lng == null) return null;
+  const meters = haversineMeters({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng });
+  return Math.max(1, Math.round((meters * 1.3) / 80));
+}
+
+function nearestNeighbourOrder<T extends { lat?: number; lng?: number }>(
+  items: T[]
+): T[] {
+  if (items.length <= 2) return items;
+  const withCoords = items.filter((i) => i.lat != null && i.lng != null);
+  const withoutCoords = items.filter((i) => i.lat == null || i.lng == null);
+  if (withCoords.length <= 1) return items;
+  const remaining = [...withCoords];
+  const ordered: T[] = [remaining.shift()!];
+  while (remaining.length > 0) {
+    const last = ordered[ordered.length - 1];
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = haversineMeters(
+        { lat: last.lat!, lng: last.lng! },
+        { lat: remaining[i].lat!, lng: remaining[i].lng! }
+      );
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    ordered.push(remaining.splice(bestIdx, 1)[0]);
+  }
+  return [...ordered, ...withoutCoords];
+}
+
+/**
+ * Matrix-aware variant: gebruikt ORS-durations als beschikbaar, anders haversine.
+ * `matrix.matrixIndex[i]` mapt item-index → matrix-index (of null als geen coords).
+ */
+function nearestNeighbourOrderWithMatrix<T extends { lat?: number; lng?: number }>(
+  items: T[],
+  matrix: { durations: (number | null)[][] | null; matrixIndex: (number | null)[] }
+): T[] {
+  if (items.length <= 2) return items;
+  const indexed = items.map((item, idx) => ({ item, idx }));
+  const withCoords = indexed.filter(({ item }) => item.lat != null && item.lng != null);
+  const withoutCoords = indexed
+    .filter(({ item }) => item.lat == null || item.lng == null)
+    .map((e) => e.item);
+  if (withCoords.length <= 1) return items;
+
+  const distance = (aIdx: number, bIdx: number): number => {
+    if (matrix.durations) {
+      const ma = matrix.matrixIndex[aIdx];
+      const mb = matrix.matrixIndex[bIdx];
+      if (ma != null && mb != null) {
+        const v = matrix.durations[ma]?.[mb];
+        if (typeof v === "number") return v;
+      }
+    }
+    const a = items[aIdx];
+    const b = items[bIdx];
+    return haversineMeters(
+      { lat: a.lat!, lng: a.lng! },
+      { lat: b.lat!, lng: b.lng! }
+    );
+  };
+
+  const remaining = [...withCoords];
+  const ordered: T[] = [remaining.shift()!.item];
+  let lastIdx = withCoords[0].idx;
+  while (remaining.length > 0) {
+    let bestI = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = distance(lastIdx, remaining[i].idx);
+      if (d < bestDist) {
+        bestDist = d;
+        bestI = i;
+      }
+    }
+    const chosen = remaining.splice(bestI, 1)[0];
+    ordered.push(chosen.item);
+    lastIdx = chosen.idx;
+  }
+  return [...ordered, ...withoutCoords];
+}
+
 function sortedTimeslots(timeslots: TimeslotV2[]): TimeslotV2[] {
   return [...timeslots].sort((a, b) => a.index - b.index);
 }
@@ -199,12 +314,12 @@ const HELP_TEXT = {
     body: "Dit is de naam van je kroegentocht-configuratie zoals die op dashboard en planner zichtbaar is.",
   },
   segmentsEnabled: {
-    title: "Pools gebruiken",
-    body: "Zet dit aan als groepen in segmenten/pools moeten spelen (bijv. Pool X en Pool Y).",
+    title: "Routes gebruiken",
+    body: "Zet dit aan als groepen via parallelle routes moeten spelen (bijv. Route A en Route B). Elke route bezoekt zijn eigen reeks kroegen.",
   },
   movementPolicy: {
     title: "Verplaatsbeleid",
-    body: "`Vrij` laat elke pool overal spelen. `Blokken` houdt pools in vaste locaties per slotbereik.",
+    body: "Bepaalt hoe parallelle routes zich over de kroegen verdelen. Alleen relevant als 'Routes gebruiken' aan staat.\n\n• Vrij — elke route mag in elk slot in elke kroeg spelen. Routes mengen naar believen.\n\n• Blokken — routes krijgen vaste kroegen per slot-bereik. Bv. de eerste 3 slots speelt Route A in Kroeg 1 en Route B in Kroeg 2, daarna swap. Voorkomt dat verschillende routes onverwacht op dezelfde kroeg samenkomen.",
   },
   matchupMaxPerPair: {
     title: "Maximaal keer dezelfde tegenstander",
@@ -212,7 +327,7 @@ const HELP_TEXT = {
   },
   repeatActivity: {
     title: "Herhaal hetzelfde spel",
-    body: "Toestaan = geen check, Liever niet = waarschuwing, Verbieden = harde fout.",
+    body: "Bepaalt of een groep tijdens deze kroegentocht hetzelfde spel meerdere keren mag spelen.\n\n• Toestaan — geen beperking. De planner mag dezelfde spel-stations naar believen toewijzen aan een groep. Handig als je weinig spellen hebt en veel slots.\n\n• Liever niet — de planner krijgt een zachte waarschuwing bij herhaling, maar lost 'm wel op als 't niet anders kan. Resultaat: zo min mogelijk herhaling, maar geen blokkade.\n\n• Verbieden — een groep mag een spel maximaal 1x spelen. Als er meer slots zijn dan unieke spellen kan de planner geen geldig schema maken (harde fout).",
   },
   importType: {
     title: "Importtype",
@@ -247,20 +362,24 @@ const HELP_TEXT = {
     body: "Het tijdstip waarop het eerste slot start.",
   },
   scheduleDuration: {
-    title: "Duur per ronde",
-    body: "Speelduur van één slot, exclusief wisseltijd.",
+    title: "Duur per kroeg",
+    body: "Hoelang je groepen in één kroeg blijven om een spel te spelen. Dit is de lengte van één slot (één tijdblok in het schema), exclusief de looptijd naar de volgende kroeg.\n\nTypisch: 25-45 minuten. Korter dan 20 min wordt vaak te krap voor een drankspel + drankje bestellen.",
   },
   scheduleTransition: {
-    title: "Wisseltijd tussen rondes",
-    body: "Tijd tussen het einde van slot N en de start van slot N+1.",
+    title: "Looptijd tussen kroegen",
+    body: "Hoelang het duurt om van de ene kroeg naar de volgende te lopen. Dit is de pauze tussen het einde van slot N en de start van slot N+1.\n\nTypisch in een binnenstad: 5-15 minuten. Tip: gebruik de routekaart om de échte looptijden te zien — daar staat per kroegparen het aantal minuten lopen.",
   },
   scheduleRounds: {
-    title: "Aantal rondes",
-    body: "Hoeveel tijdslots er worden aangemaakt.",
+    title: "Aantal kroegen / slots",
+    body: "Hoeveel tijdblokken in totaal in deze kroegentocht. In Solo-modus is dit gelijk aan het aantal kroegen dat elke groep bezoekt (1 kroeg per slot).\n\nVoorbeeld: 6 kroegen × 30 min slot + 5 looptijden × 10 min = 3u 20min totaal.",
   },
   scheduleBreakSlots: {
-    title: "Pauze slot(s)",
-    body: "Geef slotnummers op die als pauze/wisselblok moeten worden gemarkeerd, bijvoorbeeld `5` of `5,8`.",
+    title: "Pauze-slot(s)",
+    body: "Slotnummers die als pauze worden gemarkeerd (geen spel, alleen drinken of even zitten). Bv. `5` om in slot 5 een pauze in te lassen, of `5,8` voor meerdere.\n\nNuttig bij lange tochten: een pauze van bijv. 45 min in slot 5 (= ca. halverwege) om te eten.",
+  },
+  locationsTips: {
+    title: "Tips voor het kiezen van kroegen",
+    body: "Voor je je kroegen toevoegt, check per locatie:\n\n• 🕒 Openingstijden — is de kroeg open op je dag + tijdstip? Zeker bij overdag-locaties (cafés/restaurants) verschilt dit per dag. Klik op de domeinnaam naast het adres voor de website.\n\n• 🏷️ Type-label — 🍺 Bar / 🍻 Pub / ☕ Café / 🎵 Nightclub is de Google-classificatie. Een 'Bar' kan in de praktijk ook een eetzaak zijn die 's avonds dranken schenkt. Check zelf de sfeer.\n\n• 🎮 Past het bij je idee? Een rustig café past misschien niet bij een vrijgezellenavond met luide spellen. Een nightclub is dan weer onhandig voor een rustig spel als Categorieën.\n\n• 👥 Groepsgrootte — past je groep in de kroeg? Sommige kleine bruine cafés hebben maar 20 zitplaatsen. Bel evt. om te reserveren als je met >10 mensen komt.\n\n• 🚶 Looptijd — gebruik 'Op kaart' en 'Sorteer op route' om te checken hoever de kroegen uit elkaar liggen. Hou rekening met drukke straten / grachten.\n\n• 💰 Prijs (€ €€ €€€) — toon bij sommige kroegen. Hou rekening met je groep's budget — drank in een hotelbar is duurder dan in een bruine kroeg.\n\n• 🔞 18+ check — drankspellen vereisen meerderjarigheid; controleer dat de kroeg geen aparte minimum-leeftijd hanteert (sommige nightclubs zijn 21+).",
   },
 } as const;
 
@@ -298,7 +417,7 @@ function HelpModal(props: { title: string; body: string; onClose: () => void }) 
             Sluiten
           </button>
         </header>
-        <p>{props.body}</p>
+        <p style={{ whiteSpace: "pre-wrap" }}>{props.body}</p>
       </div>
     </div>
   );
@@ -467,8 +586,11 @@ function ConfiguratorContent() {
   const [showVenueSearch, setShowVenueSearch] = useState(false);
   const [showManualLocation, setShowManualLocation] = useState(false);
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [showRouteMap, setShowRouteMap] = useState(false);
   const [showSpelPicker, setShowSpelPicker] = useState(false);
   const [viewingSpelName, setViewingSpelName] = useState<string | null>(null);
+  const [editingSpelForLocationId, setEditingSpelForLocationId] = useState<string | null>(null);
+  const [pendingGenerationWarnings, setPendingGenerationWarnings] = useState<ConfigWarning[] | null>(null);
 
   const [scheduleStart, setScheduleStart] = useState("09:00");
   const [scheduleDuration, setScheduleDuration] = useState(15);
@@ -505,6 +627,7 @@ function ConfiguratorContent() {
     importParticipantRows,
     usePreset,
     generatePlan,
+    previewDiagnosis,
     saveCurrent,
     clearMessage,
     showMessage,
@@ -513,6 +636,8 @@ function ConfiguratorContent() {
     deleteConfigRecord,
     dirty,
   } = usePlannerStore();
+
+  const walkingMatrix = useWalkingMatrix(activeConfig.locations);
 
   const searchParams = useSearchParams();
   const urlMode = searchParams.get("mode");
@@ -1186,6 +1311,101 @@ function ConfiguratorContent() {
       </section>
     );
 
+  /**
+   * Auto-koppel toegevoegde kroegen aan nog-niet-gekoppelde spellen (Solo-mode).
+   * Voor elke nieuwe locatie zonder station: pak het eerstvolgende activityType
+   * dat nog geen station heeft, en maak een Solo-station (cap 1/1).
+   */
+  function autoCoupleStations(
+    existingStations: ConfigV2["stations"],
+    activityTypes: ConfigV2["activityTypes"],
+    newLocationIds: string[]
+  ): ConfigV2["stations"] {
+    if (activeConfig.scheduleSettings.mode !== "solo") return existingStations;
+    const usedActivityIds = new Set(existingStations.map((s) => s.activityTypeId));
+    const available = activityTypes.filter((a) => !usedActivityIds.has(a.id));
+    if (available.length === 0) return existingStations;
+    const stationIdsInUse = existingStations.map((s) => s.id);
+    const out = [...existingStations];
+    let nextIdSeed = stationIdsInUse;
+    for (const locId of newLocationIds) {
+      const spel = available.shift();
+      if (!spel) break;
+      const newId = nextNumericId("station", nextIdSeed);
+      nextIdSeed = [...nextIdSeed, newId];
+      out.push({
+        id: newId,
+        name: `Station ${out.length + 1}`,
+        locationId: locId,
+        activityTypeId: spel.id,
+        capacityGroupsMin: 1,
+        capacityGroupsMax: 1,
+      });
+    }
+    return out;
+  }
+
+  function runGeneration() {
+    setGeneratingPlan(true);
+    setTimeout(async () => {
+      const success = await generatePlan();
+      if (success) {
+        router.push("/planner");
+      } else {
+        // Generatie mislukt — advies-systeem aanroepen
+        setAdvisorOpen(true);
+        setAdvisorBusy(true);
+        setAdvisorError(null);
+        setAdvisorResult(null);
+        try {
+          // Config samenvatten voor de advisor
+          const poolGroups: Record<string, string[]> = {};
+          for (const g of activeConfig.groups) {
+            const pool = g.segmentId ?? "__default__";
+            if (!poolGroups[pool]) poolGroups[pool] = [];
+            poolGroups[pool].push(g.name);
+          }
+          const stationsPerLoc: Record<string, string[]> = {};
+          for (const s of activeConfig.stations) {
+            const locName = activeConfig.locations.find((l) => l.id === s.locationId)?.name ?? s.locationId;
+            if (!stationsPerLoc[locName]) stationsPerLoc[locName] = [];
+            const actName = activeConfig.activityTypes.find((a) => a.id === s.activityTypeId)?.name ?? s.name;
+            stationsPerLoc[locName].push(actName);
+          }
+          const poolSummary = Object.entries(poolGroups).map(([pid, groups]) => {
+            const segName = activeConfig.segments.find((s) => s.id === pid)?.name ?? pid;
+            return `${segName}: ${groups.length} groepen`;
+          }).join(", ");
+          const stationSummary = Object.entries(stationsPerLoc).map(([loc, spellen]) => `${loc}: ${spellen.join(", ")}`).join("; ");
+          const summary = [
+            `Configuratie: ${activeConfig.name}`,
+            `Groepen: ${activeConfig.groups.length} totaal (${poolSummary})`,
+            `Spellen: ${activeConfig.activityTypes.map((a) => a.name).join(", ")}`,
+            `Stations per locatie: ${stationSummary}`,
+            `Movement: ${activeConfig.movementPolicy}`,
+            `Tijdsloten: ${activeConfig.timeslots.filter((t) => t.kind === "active").length} actief`,
+            `Fout bij genereren: ${uiMessage?.text ?? "onbekend"}`,
+          ].join("\n");
+
+          const res = await fetch("/api/advisor/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ schema: summary }),
+          });
+          if (res.ok) {
+            setAdvisorResult(await res.json());
+          } else {
+            setAdvisorError("Advies ophalen mislukt.");
+          }
+        } catch {
+          setAdvisorError("Advies ophalen mislukt.");
+        }
+        setAdvisorBusy(false);
+      }
+      setGeneratingPlan(false);
+    }, 50);
+  }
+
   return (
     <div className="configurator">
       <UnsavedChangesGuard />
@@ -1256,9 +1476,13 @@ function ConfiguratorContent() {
           onClose={() => setShowManualLocation(false)}
           onSave={(loc) => {
             const id = nextNumericId("locatie", activeConfig.locations.map((l) => l.id));
-            updateConfig({
-              locations: [...activeConfig.locations, { id, ...loc }],
-            });
+            const nextLocations = [...activeConfig.locations, { id, ...loc }];
+            const nextStations = autoCoupleStations(
+              activeConfig.stations,
+              activeConfig.activityTypes,
+              [id]
+            );
+            updateConfig({ locations: nextLocations, stations: nextStations });
           }}
         />
       )}
@@ -1280,6 +1504,77 @@ function ConfiguratorContent() {
         <SpelPickerModal
           onClose={() => setViewingSpelName(null)}
           viewOnlyName={viewingSpelName}
+        />
+      )}
+
+      {editingSpelForLocationId !== null && (
+        <SpelPickerModal
+          onClose={() => setEditingSpelForLocationId(null)}
+          assignedTo={(() => {
+            // Voor de huidige kroeg: laat alleen koppelingen op ANDERE kroegen zien als waarschuwing.
+            // Key onder zowel `name` als (indien aanwezig) `baseId` zodat naam-mismatch (bv. diakrieten)
+            // de waarschuwing niet kan missen.
+            const map: Record<string, string[]> = {};
+            for (const station of activeConfig.stations) {
+              if (station.locationId === editingSpelForLocationId) continue;
+              const spel = activeConfig.activityTypes.find((a) => a.id === station.activityTypeId);
+              const loc = activeConfig.locations.find((l) => l.id === station.locationId);
+              if (!spel || !loc) continue;
+              (map[spel.name] ??= []).push(loc.name);
+              if (spel.baseId) {
+                const keyByBase = `__base:${spel.baseId}`;
+                (map[keyByBase] ??= []).push(loc.name);
+              }
+            }
+            return map;
+          })()}
+          onSelect={(spel) => {
+            const locationId = editingSpelForLocationId;
+            // 1. zoek of voeg activityType toe voor dit spel
+            let activity = activeConfig.activityTypes.find(
+              (a) => a.name === spel.name && a.baseId === spel.baseKey
+            );
+            let nextActivityTypes = activeConfig.activityTypes;
+            if (!activity) {
+              const newId = nextNumericId("activity", activeConfig.activityTypes.map((a) => a.id));
+              activity = { id: newId, name: spel.name, baseId: spel.baseKey };
+              nextActivityTypes = [...activeConfig.activityTypes, activity];
+            }
+            // 2. update bestaande station of maak nieuwe voor deze locatie
+            const existingStation = activeConfig.stations.find((s) => s.locationId === locationId);
+            const oldActivityTypeId = existingStation?.activityTypeId ?? null;
+            let nextStations;
+            if (existingStation) {
+              nextStations = activeConfig.stations.map((s) =>
+                s.id === existingStation.id ? { ...s, activityTypeId: activity!.id } : s
+              );
+            } else {
+              const newStationId = nextNumericId(
+                "station",
+                activeConfig.stations.map((s) => s.id)
+              );
+              nextStations = [
+                ...activeConfig.stations,
+                {
+                  id: newStationId,
+                  name: `Station ${activeConfig.stations.length + 1}`,
+                  locationId,
+                  activityTypeId: activity.id,
+                  capacityGroupsMin: 1,
+                  capacityGroupsMax: 1,
+                },
+              ];
+            }
+            // 3. cleanup: verwijder oud activityType als 'ie nergens meer wordt gebruikt
+            if (oldActivityTypeId && oldActivityTypeId !== activity.id) {
+              const stillUsed = nextStations.some((s) => s.activityTypeId === oldActivityTypeId);
+              if (!stillUsed) {
+                nextActivityTypes = nextActivityTypes.filter((a) => a.id !== oldActivityTypeId);
+              }
+            }
+            updateConfig({ activityTypes: nextActivityTypes, stations: nextStations });
+            setEditingSpelForLocationId(null);
+          }}
         />
       )}
 
@@ -1310,12 +1605,47 @@ function ConfiguratorContent() {
           onAdd={(venues) => {
             const existingIds = activeConfig.locations.map((l) => l.id);
             const nextLocations = [...activeConfig.locations];
+            const newIds: string[] = [];
             for (const v of venues) {
               const id = nextNumericId("locatie", [...existingIds, ...nextLocations.map((l) => l.id)]);
               nextLocations.push({ id, ...v });
+              newIds.push(id);
             }
-            updateConfig({ locations: nextLocations });
+            const nextStations = autoCoupleStations(
+              activeConfig.stations,
+              activeConfig.activityTypes,
+              newIds
+            );
+            updateConfig({ locations: nextLocations, stations: nextStations });
           }}
+        />
+      )}
+
+      {pendingGenerationWarnings !== null && (
+        <GenerationWarningsModal
+          warnings={pendingGenerationWarnings}
+          onCancel={() => setPendingGenerationWarnings(null)}
+          onProceed={() => {
+            setPendingGenerationWarnings(null);
+            runGeneration();
+          }}
+        />
+      )}
+
+      {showRouteMap && (
+        <RouteMapModal
+          locations={activeConfig.locations}
+          spellenByLocationId={(() => {
+            const map: Record<string, string[]> = {};
+            for (const station of activeConfig.stations) {
+              const spel = activeConfig.activityTypes.find((a) => a.id === station.activityTypeId);
+              if (!spel) continue;
+              (map[station.locationId] ??= []).push(spel.name);
+            }
+            return map;
+          })()}
+          onClose={() => setShowRouteMap(false)}
+          onApply={(reordered) => updateConfig({ locations: reordered })}
         />
       )}
 
@@ -1610,64 +1940,12 @@ function ConfiguratorContent() {
                   setUpgradeMessage(`Je huidige plan ondersteunt maximaal ${planState.limits.maxGroups} groepen. Upgrade naar Pro voor meer.`);
                   return;
                 }
-                setGeneratingPlan(true);
-                setTimeout(async () => {
-                const success = await generatePlan();
-                if (success) {
-                  router.push("/planner");
-                } else {
-                  // Generatie mislukt — advies-systeem aanroepen
-                  setAdvisorOpen(true);
-                  setAdvisorBusy(true);
-                  setAdvisorError(null);
-                  setAdvisorResult(null);
-                  try {
-                    // Config samenvatten voor de advisor
-                    const poolGroups: Record<string, string[]> = {};
-                    for (const g of activeConfig.groups) {
-                      const pool = g.segmentId ?? "__default__";
-                      if (!poolGroups[pool]) poolGroups[pool] = [];
-                      poolGroups[pool].push(g.name);
-                    }
-                    const stationsPerLoc: Record<string, string[]> = {};
-                    for (const s of activeConfig.stations) {
-                      const locName = activeConfig.locations.find(l => l.id === s.locationId)?.name ?? s.locationId;
-                      if (!stationsPerLoc[locName]) stationsPerLoc[locName] = [];
-                      const actName = activeConfig.activityTypes.find(a => a.id === s.activityTypeId)?.name ?? s.name;
-                      stationsPerLoc[locName].push(actName);
-                    }
-                    const poolSummary = Object.entries(poolGroups).map(([pid, groups]) => {
-                      const segName = activeConfig.segments.find(s => s.id === pid)?.name ?? pid;
-                      return `${segName}: ${groups.length} groepen`;
-                    }).join(", ");
-                    const stationSummary = Object.entries(stationsPerLoc).map(([loc, spellen]) => `${loc}: ${spellen.join(", ")}`).join("; ");
-                    const summary = [
-                      `Configuratie: ${activeConfig.name}`,
-                      `Groepen: ${activeConfig.groups.length} totaal (${poolSummary})`,
-                      `Spellen: ${activeConfig.activityTypes.map(a => a.name).join(", ")}`,
-                      `Stations per locatie: ${stationSummary}`,
-                      `Movement: ${activeConfig.movementPolicy}`,
-                      `Tijdsloten: ${activeConfig.timeslots.filter(t => t.kind === "active").length} actief`,
-                      `Fout bij genereren: ${uiMessage?.text ?? "onbekend"}`,
-                    ].join("\n");
-
-                    const res = await fetch("/api/advisor/analyze", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ schema: summary }),
-                    });
-                    if (res.ok) {
-                      setAdvisorResult(await res.json());
-                    } else {
-                      setAdvisorError("Advies ophalen mislukt.");
-                    }
-                  } catch {
-                    setAdvisorError("Advies ophalen mislukt.");
-                  }
-                  setAdvisorBusy(false);
+                const diagnosis = previewDiagnosis();
+                if (diagnosis.warnings.length > 0 && !diagnosis.error) {
+                  setPendingGenerationWarnings(diagnosis.warnings);
+                  return;
                 }
-                setGeneratingPlan(false);
-                }, 50);
+                runGeneration();
               }}
             >
               {generatingPlan ? "Bezig met genereren..." : "Genereer planning"}
@@ -1736,45 +2014,67 @@ function ConfiguratorContent() {
             <input
               type="checkbox"
               checked={activeConfig.segmentsEnabled}
-              onChange={(event) => updateConfig({ segmentsEnabled: event.target.checked })}
+              onChange={(event) => {
+                const enabled = event.target.checked;
+                if (!enabled) {
+                  updateConfig({ segmentsEnabled: false });
+                  return;
+                }
+                const segments =
+                  activeConfig.segments.length > 0
+                    ? activeConfig.segments
+                    : [{ id: nextNumericId("pool", []), name: "Route A" }];
+                const fallbackSegmentId = segments[0].id;
+                const segmentIdSet = new Set(segments.map((s) => s.id));
+                const groups = activeConfig.groups.map((group) =>
+                  group.segmentId && segmentIdSet.has(group.segmentId)
+                    ? group
+                    : { ...group, segmentId: fallbackSegmentId }
+                );
+                updateConfig({ segmentsEnabled: true, segments, groups });
+              }}
             />
-            <LabelWithHelp text="Pools gebruiken" helpKey="segmentsEnabled" onOpenHelp={setActiveHelp} />
+            <LabelWithHelp text="Routes gebruiken" helpKey="segmentsEnabled" onOpenHelp={setActiveHelp} />
           </label>
-          <label>
-            <LabelWithHelp text="Verplaatsbeleid" helpKey="movementPolicy" onOpenHelp={setActiveHelp} />
-            <select
-              value={activeConfig.movementPolicy}
-              onChange={(event) =>
-                updateConfig({ movementPolicy: event.target.value as ConfigV2["movementPolicy"] })
-              }
-            >
-              <option value="free">Vrij</option>
-              <option value="blocks">Blokken</option>
-            </select>
-          </label>
+          {activeConfig.segmentsEnabled ? (
+            <label>
+              <LabelWithHelp text="Verplaatsbeleid" helpKey="movementPolicy" onOpenHelp={setActiveHelp} />
+              <select
+                value={activeConfig.movementPolicy}
+                onChange={(event) =>
+                  updateConfig({ movementPolicy: event.target.value as ConfigV2["movementPolicy"] })
+                }
+              >
+                <option value="free">Vrij</option>
+                <option value="blocks">Blokken</option>
+              </select>
+            </label>
+          ) : null}
           <fieldset>
             <legend>Regels</legend>
             <div className="inline-fields">
-              <label>
-                <LabelWithHelp
-                  text="Maximaal keer dezelfde tegenstander"
-                  helpKey="matchupMaxPerPair"
-                  onOpenHelp={setActiveHelp}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  value={activeConfig.constraints.matchupMaxPerPair}
-                  onChange={(event) =>
-                    updateConfig({
-                      constraints: {
-                        ...activeConfig.constraints,
-                        matchupMaxPerPair: Number(event.target.value) || 1,
-                      },
-                    })
-                  }
-                />
-              </label>
+              {activeConfig.scheduleSettings.mode !== "solo" ? (
+                <label>
+                  <LabelWithHelp
+                    text="Maximaal keer dezelfde tegenstander"
+                    helpKey="matchupMaxPerPair"
+                    onOpenHelp={setActiveHelp}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    value={activeConfig.constraints.matchupMaxPerPair}
+                    onChange={(event) =>
+                      updateConfig({
+                        constraints: {
+                          ...activeConfig.constraints,
+                          matchupMaxPerPair: Number(event.target.value) || 1,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              ) : null}
               <label>
                 <LabelWithHelp text="Herhaal hetzelfde spel" helpKey="repeatActivity" onOpenHelp={setActiveHelp} />
                 <select
@@ -1805,12 +2105,16 @@ function ConfiguratorContent() {
       <nav className="stepper-bar">
         {[
           { label: "Groepen", done: summary.groups > 0, target: "section-groepen" },
-          { label: "Spellen", done: summary.activityTypes > 0, target: "section-spellen" },
+          ...(activeConfig.scheduleSettings.mode === "solo"
+            ? []
+            : [{ label: "Spellen", done: summary.activityTypes > 0, target: "section-spellen" }]),
           { label: "Locaties", done: summary.locations > 0, target: "section-locaties" },
-          { label: "Stations", done: summary.stations > 0, target: "section-stations" },
+          ...(activeConfig.scheduleSettings.mode === "solo"
+            ? []
+            : [{ label: "Stations", done: summary.stations > 0, target: "section-stations" }]),
           { label: "Tijdschema", done: summary.timeslots > 0, target: "section-tijdschema" },
           ...(activeConfig.segmentsEnabled
-            ? [{ label: "Pools", done: summary.segments > 0, target: "section-pools" }]
+            ? [{ label: "Routes", done: summary.segments > 0, target: "section-pools" }]
             : []),
         ].map((step, i, arr) => (
           <span key={step.target} className="stepper-item">
@@ -1829,8 +2133,22 @@ function ConfiguratorContent() {
         ))}
       </nav>
 
-      <section className="card" id="section-pools">
-        <CollapsibleSection title="Pools" count={activeConfig.segments.length} defaultOpen={activeConfig.segmentsEnabled && activeConfig.segments.length === 0} actions={<button type="button" className="btn-sm" onClick={() => { const id = nextNumericId("pool", activeConfig.segments.map((s) => s.id)); updateSegments([...activeConfig.segments, { id, name: `Pool ${activeConfig.segments.length + 1}` }]); }}>+ Pool</button>}>
+      <section className="card" id="section-pools" style={!activeConfig.segmentsEnabled && activeConfig.segments.length === 0 ? { display: "none" } : undefined}>
+        <CollapsibleSection
+          title="Routes"
+          count={activeConfig.segments.length}
+          defaultOpen={activeConfig.segmentsEnabled && activeConfig.segments.length === 0}
+          actions={activeConfig.segmentsEnabled ? (
+            <button type="button" className="btn-sm" onClick={() => { const id = nextNumericId("pool", activeConfig.segments.map((s) => s.id)); const letter = String.fromCharCode(65 + activeConfig.segments.length); updateSegments([...activeConfig.segments, { id, name: `Route ${letter}` }]); }}>+ Route</button>
+          ) : null}
+        >
+          {!activeConfig.segmentsEnabled && activeConfig.segments.length > 0 ? (
+            <div className="notice notice-warning" style={{ marginBottom: 12 }}>
+              <p style={{ margin: 0 }}>
+                ⚠️ Routes zijn momenteel uitgeschakeld — vink &quot;Routes gebruiken&quot; aan om ze actief te maken.
+              </p>
+            </div>
+          ) : null}
           <div className="editor-list">
             {activeConfig.segments.map((segment, index) => (
               <div key={segment.id} className="editor-row">
@@ -1944,7 +2262,7 @@ function ConfiguratorContent() {
         </CollapsibleSection>
       </section>
 
-      <section className="card" id="section-spellen">
+      <section className="card" id="section-spellen" style={activeConfig.scheduleSettings.mode === "solo" ? { display: "none" } : undefined}>
         <CollapsibleSection
           title="Spellen"
           count={activeConfig.activityTypes.length}
@@ -2011,6 +2329,15 @@ function ConfiguratorContent() {
             <>
               <button
                 type="button"
+                className="btn-sm btn-ghost"
+                onClick={() => setActiveHelp("locationsTips")}
+                title="Tips voor het kiezen van kroegen"
+                aria-label="Tips voor het kiezen van kroegen"
+              >
+                💡 Tips
+              </button>
+              <button
+                type="button"
                 className="btn-sm"
                 onClick={() => setShowManualLocation(true)}
               >
@@ -2019,20 +2346,164 @@ function ConfiguratorContent() {
               <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>
                 🔍 Zoek meerdere kroegen
               </button>
+              {activeConfig.locations.length >= 3 &&
+              activeConfig.locations.filter((l) => l.lat != null && l.lng != null).length >= 2 ? (
+                <button
+                  type="button"
+                  className="btn-sm btn-ghost"
+                  onClick={async () => {
+                    const ok = await confirmDialog({
+                      title: "Sorteer op route",
+                      message:
+                        "Locaties worden opnieuw geordend zodat opeenvolgende kroegen zo dicht mogelijk bij elkaar liggen (vanaf de eerste). Doorgaan?",
+                      confirmLabel: "Sorteer",
+                    });
+                    if (!ok) return;
+                    const reordered = nearestNeighbourOrderWithMatrix(
+                      activeConfig.locations,
+                      walkingMatrix
+                    );
+                    updateConfig({ locations: reordered });
+                  }}
+                  title="Herorder locaties op nearest-neighbour vanaf de eerste"
+                >
+                  📐 Sorteer op route
+                </button>
+              ) : null}
+              {activeConfig.locations.filter((l) => l.lat != null && l.lng != null).length >= 1 ? (
+                <button
+                  type="button"
+                  className="btn-sm btn-ghost"
+                  onClick={() => setShowRouteMap(true)}
+                  title="Bekijk locaties op de kaart en pas volgorde aan"
+                >
+                  🗺️ Op kaart
+                </button>
+              ) : null}
             </>
           }
         >
+        {activeConfig.locations.length === 0 && activeConfig.activityTypes.length > 0 ? (
+          <div className="notice notice-info" style={{ marginBottom: 12 }}>
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>
+              ✨ <strong>Voeg je kroegen toe</strong> — klik op <em>🔍 Zoek meerdere kroegen</em> om
+              in één keer cafés in je stad op te zoeken, of op <em>+ Locatie</em> voor handmatig invoeren.
+              Spellen worden automatisch aan kroegen gekoppeld in volgorde
+              ({activeConfig.activityTypes.map((a) => a.name).slice(0, 3).join(", ")}
+              {activeConfig.activityTypes.length > 3 ? `, … (${activeConfig.activityTypes.length} totaal)` : ""}).
+            </p>
+          </div>
+        ) : null}
         <div className="editor-list">
-          {activeConfig.locations.map((location) => (
-            <div key={location.id} className="editor-row" style={{ alignItems: "center" }}>
+          {activeConfig.locations.map((location, idx) => {
+            const prev = idx > 0 ? activeConfig.locations[idx - 1] : null;
+            const matrixSeconds = prev ? lookupSeconds(walkingMatrix, idx - 1, idx) : null;
+            const walkMinMatrix = matrixSeconds != null ? Math.max(1, Math.round(matrixSeconds / 60)) : null;
+            const walkMinFallback = prev ? walkingMinutesBetween(prev, location) : null;
+            const walkMin = walkMinMatrix ?? walkMinFallback;
+            const accuracyLabel = walkMinMatrix != null ? "" : walkMinFallback != null ? " (schatting)" : "";
+            return (
+            <Fragment key={location.id}>
+              {prev ? (
+                <div
+                  className="muted"
+                  style={{
+                    fontSize: "0.75rem",
+                    padding: "0.25rem 0.5rem",
+                    marginLeft: "0.5rem",
+                    borderLeft: "2px solid var(--border, #ddd)",
+                  }}
+                >
+                  {walkMin != null
+                    ? `🚶 ~${walkMin} min vanaf ${prev.name}${accuracyLabel}`
+                    : `🚶 looptijd onbekend (geen coördinaten)`}
+                </div>
+              ) : null}
+              <div className="editor-row" style={{ alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <div
+                aria-hidden
+                style={{
+                  flex: "0 0 28px",
+                  width: 28,
+                  height: 28,
+                  background: "#1d4ed8",
+                  color: "#fff",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+                title={`Kroeg #${idx + 1} in de route`}
+              >
+                {idx + 1}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500 }}>{location.name}</div>
-                {(location.address || location.rating != null) && (
+                <div style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  {(() => {
+                    const badge = getVenueTypeBadge(location.venueType);
+                    if (!badge) return null;
+                    return (
+                      <span
+                        style={{
+                          fontSize: "0.7rem",
+                          padding: "1px 6px",
+                          borderRadius: 4,
+                          background: badge.bg,
+                          color: badge.fg,
+                        }}
+                      >
+                        {badge.icon} {badge.label}
+                      </span>
+                    );
+                  })()}
+                  <span>{location.name}</span>
+                </div>
+                {(location.address || location.rating != null || location.website) && (
                   <div className="muted" style={{ fontSize: "0.8rem" }}>
-                    {location.address ?? ""}{location.rating != null ? ` · ${location.rating.toFixed(1)}⭐${location.reviewCount ? ` (${location.reviewCount})` : ""}` : ""}
+                    {location.address ?? ""}
+                    {location.rating != null ? ` · ${location.rating.toFixed(1)}⭐${location.reviewCount ? ` (${location.reviewCount})` : ""}` : ""}
+                    {location.website ? (
+                      <>
+                        {" · "}
+                        <a
+                          href={location.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ color: "inherit", textDecoration: "underline" }}
+                        >
+                          {(() => {
+                            try {
+                              return new URL(location.website).hostname.replace(/^www\./, "");
+                            } catch {
+                              return location.website;
+                            }
+                          })()}
+                        </a>
+                      </>
+                    ) : null}
                   </div>
                 )}
-                <small className="muted">id: {location.id}</small>
+                {activeConfig.scheduleSettings.mode === "solo" ? (() => {
+                  const station = activeConfig.stations.find((s) => s.locationId === location.id);
+                  const spel = station
+                    ? activeConfig.activityTypes.find((a) => a.id === station.activityTypeId)
+                    : null;
+                  return (
+                    <button
+                      type="button"
+                      className="btn-sm btn-ghost"
+                      style={{ marginTop: 4, fontSize: "0.8rem" }}
+                      onClick={() => setEditingSpelForLocationId(location.id)}
+                    >
+                      {spel ? `🎮 ${spel.name} · ✏️ wijzig` : "🎮 + Kies spel"}
+                    </button>
+                  );
+                })() : null}
+              </div>
               </div>
               <button type="button" className="btn-sm btn-ghost" onClick={() => setEditingLocationId(location.id)}>✏️ Bewerk</button>
               <button
@@ -2057,17 +2528,26 @@ function ConfiguratorContent() {
                     }
                     return { ...block, segmentLocationMap: nextMap };
                   });
+                  // Solo: cleanup activityTypes die door verwijderde stations weeskind geworden zijn.
+                  let nextActivityTypes = activeConfig.activityTypes;
+                  if (activeConfig.scheduleSettings.mode === "solo") {
+                    const stillUsed = new Set(nextStations.map((s) => s.activityTypeId));
+                    nextActivityTypes = activeConfig.activityTypes.filter((a) => stillUsed.has(a.id));
+                  }
                   updateConfig({
                     locations: nextLocations,
                     stations: nextStations,
                     locationBlocks: nextBlocks,
+                    activityTypes: nextActivityTypes,
                   });
                 }}
               >
                 Verwijder
               </button>
             </div>
-          ))}
+            </Fragment>
+            );
+          })}
         </div>
         </CollapsibleSection>
       </section>
@@ -2207,7 +2687,7 @@ function ConfiguratorContent() {
             <input type="time" value={scheduleStart} onChange={(event) => setScheduleStart(event.target.value)} />
           </label>
           <label>
-            <LabelWithHelp text="Duur per ronde (min)" helpKey="scheduleDuration" onOpenHelp={setActiveHelp} />
+            <LabelWithHelp text="Duur per kroeg (min)" helpKey="scheduleDuration" onOpenHelp={setActiveHelp} />
             <input
               type="number"
               min={5}
@@ -2219,7 +2699,7 @@ function ConfiguratorContent() {
           </label>
           <label>
             <LabelWithHelp
-              text="Wisseltijd tussen rondes (min)"
+              text="Looptijd tussen kroegen (min)"
               helpKey="scheduleTransition"
               onOpenHelp={setActiveHelp}
             />
@@ -2241,7 +2721,7 @@ function ConfiguratorContent() {
             />
           </label>
           <label>
-            <LabelWithHelp text="Aantal rondes" helpKey="scheduleRounds" onOpenHelp={setActiveHelp} />
+            <LabelWithHelp text="Aantal kroegen / slots" helpKey="scheduleRounds" onOpenHelp={setActiveHelp} />
             <input
               type="number"
               min={1}

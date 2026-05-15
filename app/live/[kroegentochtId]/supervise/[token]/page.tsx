@@ -107,7 +107,7 @@ function SupervisorNameModal({ token, onDone }: { token: string; onDone: (name?:
           <button type="button" onClick={handleSkip} disabled={saving} style={{ padding: "8px 16px", border: "1px dashed #ccc", background: "none", borderRadius: 8, cursor: "pointer", fontSize: "0.88rem" }}>
             Overslaan
           </button>
-          <button type="button" onClick={handleSave} disabled={saving || !name.trim()} style={{ padding: "8px 16px", border: "none", background: "#ff6b00", color: "#fff", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: "0.88rem", opacity: !name.trim() ? 0.5 : 1 }}>
+          <button type="button" onClick={handleSave} disabled={saving || !name.trim()} style={{ padding: "8px 16px", border: "none", background: "#D44017", color: "#fff", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: "0.88rem", opacity: !name.trim() ? 0.5 : 1 }}>
             {saving ? "Opslaan..." : "Opslaan"}
           </button>
         </div>
@@ -381,7 +381,7 @@ function SupervisorView({ data, refresh, token, showNameModal, onNameRegistered 
       </header>
 
       {queueCount > 0 && (
-        <div style={{ maxWidth: 560, margin: "0 auto 8px", padding: "8px 14px", background: "rgba(255, 107, 0, 0.12)", border: "1px solid rgba(255, 107, 0, 0.3)", borderRadius: 8, fontSize: "0.88rem", color: "var(--accent, #ff6b00)" }}>
+        <div style={{ maxWidth: 560, margin: "0 auto 8px", padding: "8px 14px", background: "rgba(212, 64, 23, 0.12)", border: "1px solid rgba(212, 64, 23, 0.3)", borderRadius: 8, fontSize: "0.88rem", color: "var(--accent, #D44017)" }}>
           {queueCount} score{queueCount === 1 ? "" : "s"} wacht{queueCount === 1 ? "" : "en"} op verzending — wordt automatisch opnieuw geprobeerd.
         </div>
       )}

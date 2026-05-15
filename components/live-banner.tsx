@@ -59,7 +59,7 @@ export function LiveBanner() {
         <div className="muted" style={{ fontSize: "0.78rem" }}>
           {label}
         </div>
-        <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--accent, #ff6b00)" }}>{info.name}</div>
+        <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--accent, #D44017)" }}>{info.name}</div>
       </div>
     </a>
   );

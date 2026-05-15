@@ -287,7 +287,7 @@ export default function SettingsPage() {
           <div className="card" style={{ cursor: "pointer" }} onClick={openAccount}>
             <h3 style={{ margin: "0 0 8px" }}>Account</h3>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(74, 144, 226, 0.12)", display: "grid", placeItems: "center", fontWeight: 700, color: "var(--brand)", fontSize: "1.1rem", flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(14, 46, 80, 0.12)", display: "grid", placeItems: "center", fontWeight: 700, color: "var(--brand)", fontSize: "1.1rem", flexShrink: 0 }}>
                 {session.user.name?.charAt(0).toUpperCase() || "?"}
               </div>
               <div>

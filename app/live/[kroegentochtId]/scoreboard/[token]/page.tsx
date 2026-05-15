@@ -115,7 +115,7 @@ function ScoreboardHeader({ planName, cursor }: { planName: string; cursor: NonN
           {countdownLabel || "—"}
         </div>
         {cursor.delaySeconds > 0 && (
-          <div style={{ ...subLabelStyle, color: "#ff6b00", marginTop: 4 }}>
+          <div style={{ ...subLabelStyle, color: "#D44017", marginTop: 4 }}>
             +{Math.round(cursor.delaySeconds / 60)} min vertraging
           </div>
         )}
@@ -183,7 +183,7 @@ function LeaderboardList({ leaderboard }: { leaderboard: NonNullable<ReturnType<
           textAlign: "center",
           fontWeight: 800,
           fontVariantNumeric: "tabular-nums",
-          color: "#ff6b00",
+          color: "#D44017",
           borderTopRightRadius: 8,
           borderBottomRightRadius: 8,
         }}
@@ -261,7 +261,7 @@ function CurrentMatchTicker({
     return (
       <footer className="scoreboard-ticker">
         <div style={{ display: "flex", gap: "clamp(8px, 2vw, 40px)", alignItems: "center", fontSize: "clamp(0.9rem, min(2.2vw, 3.5vh), 2.4rem)", flexWrap: "wrap", justifyContent: "center" }}>
-          <strong style={{ color: "#ff6b00", letterSpacing: "0.1em" }}>● WACHTEN</strong>
+          <strong style={{ color: "#D44017", letterSpacing: "0.1em" }}>● WACHTEN</strong>
           <span style={{ opacity: 0.7 }}>Geen actieve spelletjes op dit moment.</span>
         </div>
       </footer>
@@ -283,7 +283,7 @@ function CurrentMatchTicker({
       <span key={`${keyPrefix}-${m.id}`} style={{ opacity: 0.9 }}>
         <strong>{gA}</strong>
         {gB && <> <span style={{ opacity: 0.5 }}> tegen </span><strong>{gB}</strong></>}
-        {scoreText && <> <span style={{ color: "#ff6b00", fontWeight: 700, marginLeft: 6 }}>{scoreText}</span></>}
+        {scoreText && <> <span style={{ color: "#D44017", fontWeight: 700, marginLeft: 6 }}>{scoreText}</span></>}
         <span style={{ opacity: 0.5 }}>: {activity?.name} op {location?.name}</span>
       </span>
     );
@@ -292,7 +292,7 @@ function CurrentMatchTicker({
   return (
     <footer className="scoreboard-ticker">
       <div style={{ display: "flex", gap: "clamp(16px, 2.5vw, 40px)", alignItems: "center", fontSize: "clamp(1.4rem, min(2.2vw, 3.5vh), 2.4rem)" }}>
-        <strong style={{ color: "#ff6b00", letterSpacing: "0.1em", flexShrink: 0 }}>● NU LIVE</strong>
+        <strong style={{ color: "#D44017", letterSpacing: "0.1em", flexShrink: 0 }}>● NU LIVE</strong>
         <div className="scoreboard-ticker-viewport">
           <div className="scoreboard-ticker-track">
             {matches.map((m) => renderMatch(m, "a"))}

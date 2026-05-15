@@ -76,6 +76,7 @@ function buildTrialConfig(
     roundDurationMinutes: base.roundDuration,
     transitionMinutes: base.transitionTime,
     repeatPolicy: base.repeatPolicy,
+    enableBreak: false,
   }).config;
 }
 
@@ -407,6 +408,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
       repeatPolicy,
       stationOverrides: stationOverrides ?? undefined,
       pauseActivityName: calc.hasBye && pauseActivityName ? pauseActivityName : undefined,
+      enableBreak: false,
     }).config;
 
     // Extra rondes toevoegen (vanuit "+N speelronde" suggesties)

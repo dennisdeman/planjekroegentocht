@@ -43,33 +43,87 @@ export interface BuiltInPreset {
   pools: number;
   label: string;
   description: string;
+  mode: "solo" | "vs";
 }
 
-/** Bewezen pool-groottes voor 0-herhalingen met 2 pools (algebraic of paired-rotation). */
-const PROVEN_2POOL_SIZES = [6, 8, 10, 12, 14];
-
-/** Bewezen groepsgroottes voor 0-herhalingen met 1 pool (single-pool-rotation). */
-const PROVEN_1POOL_SIZES = [6, 8, 10, 12];
-
 export const BUILT_IN_PRESETS: BuiltInPreset[] = [
-  // 1 pool presets
-  ...PROVEN_1POOL_SIZES.map((groupCount): BuiltInPreset => ({
-    key: `1pool-${groupCount}`,
-    totalGroups: groupCount,
-    totalSpellen: groupCount / 2,
+  // --- Vrijgezellen / single-group setups ---
+  {
+    key: "solo-1g-4",
+    totalGroups: 1,
+    totalSpellen: 4,
     pools: 1,
-    label: `${groupCount} groepen · ${groupCount / 2} spellen`,
-    description: `${groupCount / 2} verschillende spellen verdeeld over kroegen. Elke groep speelt elke spel precies 1x.`,
-  })),
-  // 2 pool presets
-  ...PROVEN_2POOL_SIZES.map((poolSize): BuiltInPreset => ({
-    key: `2pool-${poolSize}`,
-    totalGroups: poolSize * 2,
-    totalSpellen: poolSize,
+    mode: "solo",
+    label: "Vrijgezellen · 4 kroegen",
+    description: "1 groep door 4 kroegen — ideaal voor een vrijgezellenavond. 4 spellen verdeeld over 4 cafés.",
+  },
+  {
+    key: "solo-1g-6",
+    totalGroups: 1,
+    totalSpellen: 6,
+    pools: 1,
+    mode: "solo",
+    label: "Vrijgezellen · 6 kroegen",
+    description: "1 groep door 6 kroegen — uitgebreidere vrijgezellenavond met 6 verschillende drankspellen.",
+  },
+
+  // --- Solo-mode: 1 spel per kroeg, elke groep loopt alleen ---
+  {
+    key: "solo-4",
+    totalGroups: 4,
+    totalSpellen: 4,
+    pools: 1,
+    mode: "solo",
+    label: "4 groepen · 4 kroegen",
+    description: "Mini-tocht voor 4 groepen. Elke groep bezoekt elke kroeg precies 1×, geen bye, geen herhaling.",
+  },
+  {
+    key: "solo-6",
+    totalGroups: 6,
+    totalSpellen: 6,
+    pools: 1,
+    mode: "solo",
+    label: "6 groepen · 6 kroegen",
+    description: "Standaard kroegentocht. 6 groepen, 6 kroegen — ideale 1-op-1 indeling.",
+  },
+  {
+    key: "solo-8",
+    totalGroups: 8,
+    totalSpellen: 8,
+    pools: 1,
+    mode: "solo",
+    label: "8 groepen · 8 kroegen",
+    description: "Grote tocht. 8 groepen door 8 kroegen, geen bye, geen herhaling.",
+  },
+  {
+    key: "solo-bye-6-4",
+    totalGroups: 6,
+    totalSpellen: 4,
+    pools: 1,
+    mode: "solo",
+    label: "6 groepen · 4 kroegen (korte tocht)",
+    description: "Kortere avond: 6 groepen, 4 kroegen. Elke ronde zitten 2 groepen op bye — rouleert over de slots.",
+  },
+  {
+    key: "solo-routes-12",
+    totalGroups: 12,
+    totalSpellen: 6,
     pools: 2,
-    label: `${poolSize * 2} groepen · ${poolSize} spellen`,
-    description: `${poolSize} verschillende spellen op ${poolSize} kroegen, ${poolSize * 2} groepen in twee parallelle routes. Elke groep speelt elke spel precies 1x.`,
-  })),
+    mode: "solo",
+    label: "12 groepen · 6 kroegen · 2 routes",
+    description: "Grote groep gesplitst in twee parallelle routes (6 groepen per route). Beide routes lopen tegelijk hun eigen 6 kroegen af.",
+  },
+
+  // --- Vs-mode: 2 groepen per kroeg, tegen elkaar ---
+  {
+    key: "vs-6",
+    totalGroups: 6,
+    totalSpellen: 3,
+    pools: 1,
+    mode: "vs",
+    label: "6 groepen · 3 kroegen (Vs)",
+    description: "Klassieke Vs-modus. Elke kroeg heeft 2 groepen die tegen elkaar spelen, 3 kroegen actief per ronde.",
+  },
 ];
 
 export function createPresetFromKey(key: string, configId?: string): ConfigV2 {
@@ -82,44 +136,45 @@ export function createPresetFromKey(key: string, configId?: string): ConfigV2 {
   }
   const spellen = ALL_SPELLEN.slice(0, preset.totalSpellen);
 
-  if (preset.pools === 1) {
-    const { config } = buildConfig({
-      name: `Kroegentocht ${preset.totalGroups} groepen`,
-      usePools: false,
-      poolNames: [],
-      groupCount: preset.totalGroups,
-      groupNames,
-      spellen,
-      locations: spellen.map((_, i) => `Kroeg ${i + 1}`),
-      movementPolicy: "free",
-      stationLayout: "split",
-      scheduleMode: "all-spellen",
-      startTime: "19:30",
-      roundDurationMinutes: 30,
-      transitionMinutes: 10,
-      repeatPolicy: "soft",
-    });
-    if (configId) config.id = configId;
-    return config;
-  }
-
-  const poolSize = preset.totalGroups / 2;
-  const { config } = buildConfig({
+  const baseParams = {
     name: `Kroegentocht ${preset.totalGroups} groepen`,
-    usePools: true,
-    poolNames: ["Route A", "Route B"],
     groupCount: preset.totalGroups,
     groupNames,
     spellen,
     locations: spellen.map((_, i) => `Kroeg ${i + 1}`),
-    movementPolicy: "free",
-    stationLayout: "split",
-    scheduleMode: "all-spellen",
+    movementPolicy: "free" as const,
+    stationLayout: "split" as const,
+    scheduleMode: "all-spellen" as const,
     startTime: "19:30",
     roundDurationMinutes: 30,
     transitionMinutes: 10,
-    repeatPolicy: "soft",
-  });
+    repeatPolicy: "soft" as const,
+    mode: preset.mode,
+    enableBreak: false,
+  };
+
+  let config: ConfigV2;
+  if (preset.pools === 1) {
+    const built = buildConfig({
+      ...baseParams,
+      usePools: false,
+      poolNames: [],
+    });
+    config = built.config;
+  } else {
+    const built = buildConfig({
+      ...baseParams,
+      usePools: true,
+      poolNames: ["Route A", "Route B"],
+    });
+    config = built.config;
+  }
+
+  // Strip locaties + stations: gebruiker vult zelf de kroegen aan (via bulkzoek
+  // of handmatig). De activityTypes (spel-bibliotheek) blijft staan en wordt
+  // automatisch 1-op-1 aan toegevoegde kroegen gekoppeld door de configurator.
+  config = { ...config, locations: [], stations: [] };
+
   if (configId) config.id = configId;
   return config;
 }

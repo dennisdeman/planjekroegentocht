@@ -258,7 +258,7 @@ function KroegentochtTimer({ kroegentochtId }: { kroegentochtId: string }) {
         {statusLabel}{roundLabel && ` · ${roundLabel}`}
       </div>
       {timeLabel && (
-        <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1.3rem", color: "var(--accent, #ff6b00)" }}>
+        <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1.3rem", color: "var(--accent, #D44017)" }}>
           {timeLabel}
         </div>
       )}

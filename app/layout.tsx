@@ -1,8 +1,23 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
+import { Poppins, Montserrat } from "next/font/google";
 import { AuthSessionProvider } from "@ui/session-provider";
 import "./globals.css";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
 
 const GA_ID = "G-J2Y0FEHP0S";
 
@@ -28,7 +43,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="nl">
+    <html lang="nl" className={`${poppins.variable} ${montserrat.variable}`}>
       <body suppressHydrationWarning>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}

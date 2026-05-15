@@ -204,7 +204,7 @@ export function ProgramItemsSection({ kroegentochtId }: ProgramItemsSectionProps
       </p>
 
       {showForm && (
-        <div style={{ border: "1px solid var(--brand)", borderRadius: 8, padding: 12, marginBottom: 12, background: "rgba(74,144,226,0.04)" }}>
+        <div style={{ border: "1px solid var(--brand)", borderRadius: 8, padding: 12, marginBottom: 12, background: "rgba(14, 46, 80,0.04)" }}>
           <div style={{ display: "grid", gap: 8 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
               <input
@@ -273,7 +273,7 @@ export function ProgramItemsSection({ kroegentochtId }: ProgramItemsSectionProps
               key={item.id}
               style={{
                 display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-                border: "1px solid var(--brand)", borderRadius: 8, background: "rgba(74,144,226,0.04)", fontSize: "0.88rem",
+                border: "1px solid var(--brand)", borderRadius: 8, background: "rgba(14, 46, 80,0.04)", fontSize: "0.88rem",
               }}
             >
               <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>{iconEmoji(item.icon)}</span>

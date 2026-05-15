@@ -35,6 +35,8 @@ export interface LocationV2 {
   category?: string;
   /** External provider id (e.g. Serper/Google CID) for dedup on search results. */
   sourceId?: string;
+  /** Type café: 'bar' | 'pub' | 'cafe' | 'nightclub'. Wordt gezet bij bulk-zoek of in manual modal. */
+  venueType?: string;
 }
 
 export interface ActivityTypeV2 {

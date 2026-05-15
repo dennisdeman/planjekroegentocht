@@ -17,11 +17,16 @@ interface Props {
   onSelect?: (spel: { name: string; baseKey: string | null }) => void;
   /** Namen die al in de config zitten — worden gefilterd uit de lijst. */
   excludeNames?: string[];
+  /**
+   * Spel-naam → lijst van kroegnamen waaraan 't al gekoppeld is. Spel blijft kiesbaar
+   * maar krijgt een "Al gekoppeld aan…" waarschuwing.
+   */
+  assignedTo?: Record<string, string[]>;
   /** Info-only modus: toon één spel (op naam), auto-uitgeklapt, zonder kies-knop. */
   viewOnlyName?: string;
 }
 
-export function SpelPickerModal({ onClose, onSelect, excludeNames = [], viewOnlyName }: Props) {
+export function SpelPickerModal({ onClose, onSelect, excludeNames = [], assignedTo, viewOnlyName }: Props) {
   const [spellen, setSpellen] = useState<OrgSpel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,20 +127,63 @@ export function SpelPickerModal({ onClose, onSelect, excludeNames = [], viewOnly
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map((s) => {
             const isExpanded = expandedId === s.id;
+            const normalize = (v: string) => v.normalize("NFC").trim().toLowerCase();
+            const assignedLocations = (() => {
+              if (!assignedTo) return [];
+              const dedupe = new Set<string>();
+              const collect: string[] = [];
+              const push = (arr?: string[]) => {
+                for (const v of arr ?? []) {
+                  if (!dedupe.has(v)) {
+                    dedupe.add(v);
+                    collect.push(v);
+                  }
+                }
+              };
+              // Eerst exact key-match op naam
+              push(assignedTo[s.name]);
+              // Normalize-match op naam (vangt NFC/NFD/whitespace verschillen)
+              const target = normalize(s.name);
+              for (const [k, v] of Object.entries(assignedTo)) {
+                if (k.startsWith("__base:")) continue;
+                if (normalize(k) === target) push(v);
+              }
+              // Match op baseKey (vangt naam-mismatch zoals diakrieten of renames)
+              if (s.baseKey) push(assignedTo[`__base:${s.baseKey}`]);
+              return collect;
+            })();
+            const isAssigned = assignedLocations.length > 0;
             return (
               <div
                 key={s.id}
                 style={{
-                  border: "1px solid var(--line, #e2e6ec)",
+                  border: isAssigned
+                    ? "1px solid #f59e0b"
+                    : "1px solid var(--line, #e2e6ec)",
                   borderRadius: 8,
                   padding: 12,
-                  background: isExpanded ? "rgba(74,144,226,0.04)" : "white",
+                  background: isExpanded ? "rgba(14, 46, 80,0.04)" : "white",
                   transition: "background 0.15s",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h4 style={{ margin: "0 0 4px" }}>{s.name}</h4>
+                    {isAssigned && (
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#92400e",
+                          background: "#fef3c7",
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          display: "inline-block",
+                          marginBottom: 4,
+                        }}
+                      >
+                        ⚠️ Al gekoppeld aan: {assignedLocations.join(", ")}
+                      </div>
+                    )}
                     <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
                       {s.explanation.summary || <em>(geen beschrijving)</em>}
                     </p>
