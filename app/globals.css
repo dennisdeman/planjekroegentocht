@@ -1084,26 +1084,6 @@ textarea {
   white-space: nowrap;
 }
 
-.block-header-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
-  gap: 8px;
-  align-items: end;
-}
-
-.json-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-.code-textarea {
-  min-height: 180px;
-  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 0.88rem;
-  line-height: 1.35;
-}
-
 .activity-row {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1543,10 +1523,6 @@ textarea {
   }
 
   .editor-row {
-    grid-template-columns: 1fr;
-  }
-
-  .block-header-row {
     grid-template-columns: 1fr;
   }
 }
@@ -3376,10 +3352,6 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .block-header-row {
-    grid-template-columns: 1fr;
-  }
-
   .editor-row {
     grid-template-columns: 1fr;
   }
@@ -3526,11 +3498,6 @@ a:focus-visible {
 
   /* ── Import ─────────────────────────────────────────────────────── */
   .import-config-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* ── JSON grid ──────────────────────────────────────────────────── */
-  .json-grid {
     grid-template-columns: 1fr;
   }
 }

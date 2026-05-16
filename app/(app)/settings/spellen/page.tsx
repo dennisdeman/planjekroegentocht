@@ -163,7 +163,7 @@ export default function SpellenSettingsPage() {
     <div style={{ display: "grid", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Spellenbibliotheek</h2>
+          <h2 style={{ margin: 0 }}>Drankspellen</h2>
           <p className="muted" style={{ margin: "2px 0 0" }}>Materialen en speluitleg per spel. Beschikbaar bij al je kroegentochten.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

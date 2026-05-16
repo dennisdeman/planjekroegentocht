@@ -124,6 +124,13 @@ export interface ConfigV2 {
   scheduleSettings: ScheduleSettingsV2;
   pauseActivity?: PauseActivityV2;
   materialOverrides?: Record<Id, import("./spel-registry").MaterialItem[]>;
+  /**
+   * Solo-mode global toggle: zijn er spellen aan kroegen gekoppeld?
+   * - `true` (default): klassieke kroegentocht met spel per kroeg.
+   * - `false`: pure kroegentocht — elke kroeg is een bezoek-only stop.
+   *   Auto-stations met activityType `activity-kroegbezoek` worden onderhouden.
+   */
+  gamesEnabled?: boolean;
 }
 
 export interface PlanAllocationV2 {

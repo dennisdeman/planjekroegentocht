@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { href: "/configurator", label: "Configurator" },
   { href: "/planner", label: "Planner" },
   { href: "/kroegentochten", label: "Kroegentochten" },
-  { href: "/settings/spellen", label: "Spellenbibliotheek" },
+  { href: "/settings/spellen", label: "Drankspellen" },
   { href: "/upgrade", label: "Upgraden" },
   { href: "/help", label: "Help" },
 ];

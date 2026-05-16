@@ -96,7 +96,7 @@ const FAQ_SECTIONS = [
       { q: "Welke browsers worden ondersteund?", a: "Alle moderne browsers: Chrome, Firefox, Safari en Edge. Op mobiel werkt het in iOS Safari en Android Chrome." },
       { q: "Werkt het op iPhone en Android?", a: "Ja. De scoreapp en publieke views zijn geoptimaliseerd voor mobiel. Voor de beste werking — vooral push-notificaties op iOS — installeer je de app op je startscherm (PWA)." },
       { q: "Worden mijn gegevens veilig opgeslagen?", a: "Ja. Je gegevens staan op beveiligde servers in de EU. Foto's worden veilig opgeslagen in de cloud (Cloudflare R2). Alleen jij en de leden van je organisatie hebben toegang." },
-      { q: "Kan ik met collega's samenwerken?", a: "Ja, met Pro Jaar. Nodig collega's uit in je organisatie. Iedereen heeft toegang tot dezelfde configuraties, planningen en gedeelde spellenbibliotheek." },
+      { q: "Kan ik met collega's samenwerken?", a: "Ja, met Pro Jaar. Nodig collega's uit in je organisatie. Iedereen heeft toegang tot dezelfde configuraties, planningen en gedeelde drankspellen." },
     ],
   },
 ];

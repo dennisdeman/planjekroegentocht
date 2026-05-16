@@ -257,6 +257,9 @@ export function validatePlan(plan: PlanV2, config: ConfigV2): Issue[] {
       config.constraints.avoidRepeatActivityType === "hard" ? "error" : "warn";
     for (const [groupId, typeCounts] of activityTypeCountByGroup.entries()) {
       for (const [activityTypeId, count] of typeCounts.entries()) {
+        // Placeholder-activities (pauze, kroegbezoek) zijn geen echte spellen —
+        // herhaling daarvan is verwacht en mag geen warning triggeren.
+        if (activityTypeId === "activity-pause" || activityTypeId === "activity-kroegbezoek") continue;
         if (count > 1) {
           const occurrences =
             activityTypeOccurrencesByGroup.get(groupId)?.get(activityTypeId) ?? [];

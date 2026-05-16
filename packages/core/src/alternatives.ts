@@ -126,12 +126,205 @@ function extractBuilderParams(config: ConfigV2): ConfigBuilderParams {
     movementPolicy: config.movementPolicy,
     stationLayout,
     scheduleMode: config.scheduleSettings.scheduleMode,
+    mode: config.scheduleSettings.mode,
     startTime: "09:00",
     roundDurationMinutes: config.scheduleSettings.roundDurationMinutes,
     transitionMinutes: config.scheduleSettings.transitionMinutes,
     repeatPolicy: config.constraints.avoidRepeatActivityType,
     pauseActivityName: config.pauseActivity?.name,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Solo-mode: aparte enumerator + apply-pad
+//
+// In Solo geldt: 1 groep per kroeg per slot, 1 spel per kroeg (auto-couple),
+// generator gebruikt `solo-rotation` strategy. Vs-dimensies (layout, movement,
+// scheduleMode-flip, groupsPerPool, pauze-activiteit) zijn niet relevant.
+//
+// We bouwen niet via `buildConfig` (Vs-biased: zou N*M stations maken in same
+// layout). In plaats daarvan muteren we de bestaande config direct: groepen
+// bijmaken/weghalen en timeslots toevoegen/weghalen. Locaties/stations laten
+// we ongemoeid — die zijn user-curated.
+// ---------------------------------------------------------------------------
+
+function applySoloPatch(config: ConfigV2, patch: AlternativePatch): ConfigV2 {
+  // Shallow clone + nieuwe arrays voor geraakte velden
+  const cloned: ConfigV2 = {
+    ...config,
+    groups: config.groups.map((g) => ({ ...g })),
+    timeslots: config.timeslots.map((t) => ({ ...t })),
+  };
+
+  if (patch.groupCount !== undefined) {
+    const target = patch.groupCount;
+    if (target < cloned.groups.length) {
+      cloned.groups = cloned.groups.slice(0, target);
+    } else if (target > cloned.groups.length) {
+      const defaultSegmentId = cloned.segmentsEnabled
+        ? cloned.segments[0]?.id
+        : undefined;
+      for (let i = cloned.groups.length; i < target; i++) {
+        cloned.groups.push({
+          id: `group-extra-${i + 1}-${Math.random().toString(36).slice(2, 6)}`,
+          name: `Groep ${i + 1}`,
+          ...(defaultSegmentId ? { segmentId: defaultSegmentId } : {}),
+        });
+      }
+    }
+  }
+
+  if (patch.addTimeslots !== undefined && patch.addTimeslots !== 0) {
+    const active = cloned.timeslots
+      .filter((s) => s.kind === "active")
+      .sort((a, b) => a.index - b.index);
+    if (patch.addTimeslots > 0) {
+      const last = active[active.length - 1];
+      if (last) {
+        for (let i = 0; i < patch.addTimeslots; i++) {
+          cloned.timeslots.push({
+            id: `slot-extra-${i + 1}-${Math.random().toString(36).slice(2, 6)}`,
+            start: last.end,
+            end: last.end,
+            label: `Extra ronde ${active.length + i + 1}`,
+            kind: "active",
+            index: last.index + i + 1,
+          });
+        }
+      }
+    } else {
+      // Verwijder de laatste N actieve slots
+      const removeCount = Math.min(-patch.addTimeslots, active.length - 1);
+      if (removeCount > 0) {
+        const removeIds = new Set(
+          active.slice(active.length - removeCount).map((s) => s.id)
+        );
+        cloned.timeslots = cloned.timeslots.filter((s) => !removeIds.has(s.id));
+      }
+    }
+  }
+
+  return cloned;
+}
+
+interface SoloMismatch {
+  groups: number;
+  stations: number;
+  activeSlots: number;
+}
+
+function inspectSoloMismatch(config: ConfigV2): SoloMismatch {
+  const groups = config.groups.length;
+  const stations = config.stations.filter(
+    (s) => s.activityTypeId !== "activity-pause"
+  ).length;
+  const activeSlots = config.timeslots.filter((t) => t.kind === "active").length;
+  return { groups, stations, activeSlots };
+}
+
+function enumerateSoloCandidates(config: ConfigV2): RawCandidate[] {
+  const candidates: RawCandidate[] = [];
+  const { groups, stations, activeSlots } = inspectSoloMismatch(config);
+
+  // 1. Groepen aanpassen zodat aantal groepen <= aantal kroegen
+  //    (dan speelt elke groep elke ronde, geen byes)
+  if (groups > stations && stations > 0) {
+    const remove = groups - stations;
+    candidates.push({
+      patch: { groupCount: stations },
+      cost: remove,
+      label: `${stations} groepen (${remove} minder)`,
+      reason: `Met ${stations} groepen passen alle groepen elke ronde in een kroeg — geen groep meer op bye.`,
+    });
+  }
+  // 2. Minder groepen (-1, -2) — voor wie wil snijden zonder helemaal naar match
+  if (groups > 2) {
+    for (const delta of [1, 2]) {
+      const target = groups - delta;
+      if (target < 1) continue;
+      if (target === stations) continue; // dubbele
+      candidates.push({
+        patch: { groupCount: target },
+        cost: delta,
+        label: `${target} groepen (${delta} minder)`,
+        reason: target <= stations
+          ? `Met ${target} groepen passen alle groepen elke ronde in een kroeg.`
+          : `Iets minder groepen — minder ${target - stations} groep${target - stations > 1 ? "en" : ""} op bye per ronde.`,
+      });
+    }
+  }
+  // 3. Meer groepen (+1, +2) — alleen suggereren als er al meer dan 1 groep is.
+  //    Een 1-groep-tocht (vrijgezellen, etc.) heeft expliciet 1 groep gekozen;
+  //    "meer groepen toevoegen" is daar onzinnig advies.
+  if (groups > 1) {
+    for (const delta of [1, 2]) {
+      const target = groups + delta;
+      candidates.push({
+        patch: { groupCount: target },
+        cost: delta,
+        label: `${target} groepen (${delta} meer)`,
+        reason:
+          target <= stations
+            ? `Meer groepen die mee kunnen — passen nog allemaal in de ${stations} kroegen.`
+            : `Meer groepen, maar ${target - stations} groep${target - stations > 1 ? "en" : ""} per ronde op bye (wisselend).`,
+      });
+    }
+  }
+
+  // 4. Slots = stations (elke kroeg precies 1× bezocht)
+  if (activeSlots !== stations && stations > 0) {
+    const delta = stations - activeSlots;
+    candidates.push({
+      patch: { addTimeslots: delta },
+      cost: Math.abs(delta),
+      label: `${stations} rondes (${delta > 0 ? "+" : ""}${delta})`,
+      reason:
+        delta > 0
+          ? `Met ${stations} rondes bezoekt elke groep álle kroegen exact 1×.`
+          : `Met ${stations} rondes bezoekt elke groep álle kroegen exact 1× zonder herhalingen.`,
+    });
+  }
+  // 5. Extra rondes (+1, +2) — alleen als zinvol (groepen herbezoeken kroegen)
+  if (stations > 0) {
+    for (const extra of [1, 2]) {
+      const target = activeSlots + extra;
+      if (target === stations) continue; // dekt al door bovenstaande
+      candidates.push({
+        patch: { addTimeslots: extra },
+        cost: extra,
+        label: `${target} rondes (+${extra})`,
+        reason: `Extra ronde${extra > 1 ? "s" : ""} — langere kroegentocht. ${target > stations ? "Sommige kroegen worden herbezocht." : "Niet alle kroegen worden bezocht."}`,
+      });
+    }
+  }
+  // 6. Minder rondes (-1, -2)
+  for (const extra of [1, 2]) {
+    const target = activeSlots - extra;
+    if (target < 1) continue;
+    candidates.push({
+      patch: { addTimeslots: -extra },
+      cost: extra,
+      label: `${target} rondes (-${extra})`,
+      reason: `Kortere kroegentocht — ${target} rondes.${target < stations ? ` ${stations - target} kroeg${stations - target > 1 ? "en" : ""} wordt niet bezocht.` : ""}`,
+    });
+  }
+
+  // 7. Combinaties: groepen + slots
+  const groupOnly = candidates.filter((c) => "groupCount" in c.patch);
+  const slotOnly = candidates.filter((c) => "addTimeslots" in c.patch);
+  for (const g of groupOnly) {
+    for (const s of slotOnly) {
+      if (g.cost + s.cost > 4) continue;
+      candidates.push({
+        patch: { ...g.patch, ...s.patch },
+        cost: g.cost + s.cost,
+        label: `${g.label} + ${s.label}`,
+        reason: `${g.reason} ${s.reason}`,
+      });
+    }
+  }
+
+  return candidates;
 }
 
 // ---------------------------------------------------------------------------
@@ -385,6 +578,11 @@ export function applyPatchToConfig(
   base: ConfigV2 | ConfigBuilderParams,
   patch: AlternativePatch
 ): ConfigV2 {
+  // Solo-tak: mutating apply, geen buildConfig (Vs-biased voor stations).
+  if ("id" in base && (base as ConfigV2).scheduleSettings.mode === "solo") {
+    return applySoloPatch(base as ConfigV2, patch);
+  }
+
   const baseParams = "id" in base ? extractBuilderParams(base as ConfigV2) : base;
   const params = { ...baseParams };
 
@@ -511,13 +709,39 @@ export async function proposeAlternatives(
   }
   const baseCoverage = computeSpelCoverage(basePlan, config);
 
-  // Als het plan al perfect is (0 herhalingen, hoge score, volledige dekking), geen suggesties nodig
-  if (baseRepeats === 0 && baseScore.totalScore >= 10.0 && baseCoverage.full === baseCoverage.total) {
+  // Genereer kandidaten — Solo en Vs hebben aparte dimensies
+  const isSolo = config.scheduleSettings.mode === "solo";
+
+  // "Al optimaal"-shortcut. In Vs gelden de strenge eisen (score >= 10);
+  // in Solo is `stationOccupancy` mathematisch begrensd door (groups/stations)
+  // en dus geen bruikbare metric. Voor Solo geldt al-optimaal als:
+  //   - geen herhalingen
+  //   - volledige dekking
+  //   - geen mismatch tussen groepen / kroegen / slots die de gebruiker zou willen oplossen
+  if (isSolo) {
+    const stationCount = config.stations.filter(
+      (s) => s.activityTypeId !== "activity-pause"
+    ).length;
+    const activeSlots = config.timeslots.filter((t) => t.kind === "active").length;
+    const groupCount = config.groups.length;
+    const noMismatch =
+      groupCount > 0 &&
+      stationCount > 0 &&
+      groupCount <= stationCount &&
+      activeSlots === stationCount;
+    if (
+      baseRepeats === 0 &&
+      baseCoverage.full === baseCoverage.total &&
+      noMismatch
+    ) {
+      return [];
+    }
+  } else if (baseRepeats === 0 && baseScore.totalScore >= 10.0 && baseCoverage.full === baseCoverage.total) {
     return [];
   }
-
-  // Genereer kandidaten
-  const rawCandidates = enumerateCandidates(config, baseParams, baseFeasibility, costBudget);
+  const rawCandidates = isSolo
+    ? enumerateSoloCandidates(config)
+    : enumerateCandidates(config, baseParams, baseFeasibility, costBudget);
 
   // Voeg eventuele seed-alternatieven toe (voor LLM-uitbreiding)
   if (options?.seedAlternatives) {
@@ -551,7 +775,10 @@ export async function proposeAlternatives(
     evaluated++;
     let patchedConfig: ConfigV2;
     try {
-      patchedConfig = applyPatchToConfig(baseParams, candidate.patch);
+      // Solo gebruikt mutating apply op de echte config (buildConfig is Vs-biased).
+      patchedConfig = isSolo
+        ? applySoloPatch(config, candidate.patch)
+        : applyPatchToConfig(baseParams, candidate.patch);
     } catch {
       continue;
     }
@@ -602,7 +829,7 @@ export async function proposeAlternatives(
   const hasFullCoverage = alternatives.some(
     (a) => a.spelCoverage.full === a.spelCoverage.total && a.spelCoverage.total > 0
   );
-  if (!hasFullCoverage && baseCoverage.full < baseCoverage.total && baseParams.scheduleMode === "all-spellen") {
+  if (!isSolo && !hasFullCoverage && baseCoverage.full < baseCoverage.total && baseParams.scheduleMode === "all-spellen") {
     const poolCount = baseParams.usePools ? baseParams.poolNames.length : 1;
     const niceHTargets = [6, 10, 14, 18, 22]
       .map((pp) => pp * poolCount)

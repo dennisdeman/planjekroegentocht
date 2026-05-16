@@ -134,37 +134,48 @@ function diagnoseConfig(config: ConfigV2): ConfigDiagnosis {
     if (totalGroups === 0) {
       return { error: "Geen groepen toegevoegd. Voeg minstens 1 groep toe.", warnings };
     }
+    const locCount = config.locations.length;
+    const gamesEnabled = config.gamesEnabled !== false;
+    const unlinked = gamesEnabled ? locCount - totalStations : 0;
     if (
       activeSlots > totalStations &&
       config.constraints.avoidRepeatActivityType === "hard"
     ) {
       return {
-        error: `Er zijn ${activeSlots} slots maar maar ${totalStations} kroegen. Groepen moeten kroegen herbezoeken, maar "Herhaal hetzelfde spel" staat op Verbieden. Verhoog kroegen, verlaag slots, of zet 'Herhaal spel' op Toestaan/Liever niet.`,
+        error: `Er zijn ${activeSlots} slots maar maar ${totalStations} speelbare kroeg${totalStations !== 1 ? "en" : ""} (kroeg met spel-koppeling). Groepen moeten kroegen herbezoeken, maar "Herhaal hetzelfde spel" staat op Verbieden. Verhoog het aantal speelbare kroegen, verlaag slots, of zet 'Herhaal spel' op Toestaan/Liever niet.`,
         warnings,
       };
     }
     // Niet-blokkerende waarschuwingen voor Solo:
+    // Eerst: kroegen zonder spel (root cause die de andere warnings vertroebelt).
+    if (unlinked > 0) {
+      warnings.push({
+        title: `${unlinked} kroeg${unlinked > 1 ? "en" : ""} zonder spel gekoppeld`,
+        body: `Je hebt ${locCount} kroegen toegevoegd, maar maar ${totalStations} ${totalStations === 1 ? "kroeg heeft" : "kroegen hebben"} een spel gekoppeld. De ${unlinked} kroeg${unlinked > 1 ? "en zonder" : " zonder"} spel ${unlinked > 1 ? "tellen" : "telt"} niet mee in de planning.`,
+        advice: `Klik bij elke spel-loze kroeg op "🎮 + Kies spel" in de Locaties-lijst om een spel te koppelen. Of verwijder de spel-loze kroegen.`,
+      });
+    }
     if (totalGroups > totalStations) {
       const onBye = totalGroups - totalStations;
       warnings.push({
-        title: `Meer groepen dan kroegen (${totalGroups} > ${totalStations})`,
-        body: `Er passen maar ${totalStations} groepen tegelijk in een kroeg (1 per kroeg). De resterende ${onBye} groep${onBye > 1 ? "en" : ""} ${onBye > 1 ? "zitten" : "zit"} per ronde op bye en speel${onBye > 1 ? "en" : "t"} dus niet mee. Over de rondes wisselt wie er op bye zit.`,
-        advice: `Wil je dat alle groepen elke ronde spelen? Voeg ${onBye} kroeg${onBye > 1 ? "en" : ""} extra toe, of verklein de groepen door er enkele samen te voegen.`,
+        title: `Meer groepen dan speelbare kroegen (${totalGroups} > ${totalStations})`,
+        body: `Er passen maar ${totalStations} groepen tegelijk in een speelbare kroeg (1 per kroeg). De resterende ${onBye} groep${onBye > 1 ? "en" : ""} ${onBye > 1 ? "zitten" : "zit"} per ronde op bye en speel${onBye > 1 ? "en" : "t"} dus niet mee. Over de rondes wisselt wie er op bye zit.`,
+        advice: `Wil je dat alle groepen elke ronde spelen? Voeg ${onBye} kroeg + spel-koppeling extra toe, of verklein de groepen door er enkele samen te voegen.`,
       });
     }
     if (activeSlots > totalStations && config.constraints.avoidRepeatActivityType !== "hard") {
       const extra = activeSlots - totalStations;
       warnings.push({
-        title: `Meer slots dan kroegen (${activeSlots} > ${totalStations})`,
-        body: `Je hebt ${activeSlots} slots gepland maar maar ${totalStations} kroegen. Groepen moeten daarom in ${extra} slot${extra > 1 ? "s" : ""} terug naar een eerder bezochte kroeg (en dus hetzelfde spel nogmaals spelen).`,
-        advice: `Wil je elke kroeg precies 1× per groep? Verlaag het aantal slots naar ${totalStations}, of voeg ${extra} extra kroeg${extra > 1 ? "en" : ""} toe.`,
+        title: `Meer slots dan speelbare kroegen (${activeSlots} > ${totalStations})`,
+        body: `Je hebt ${activeSlots} slots gepland maar maar ${totalStations} speelbare kroeg${totalStations !== 1 ? "en (kroeg met spel-koppeling)" : " (kroeg met spel-koppeling)"}. Groepen moeten daarom in ${extra} slot${extra > 1 ? "s" : ""} terug naar een eerder bezochte kroeg (en dus hetzelfde spel nogmaals spelen).`,
+        advice: `Wil je elke kroeg precies 1× per groep? Verlaag het aantal slots naar ${totalStations}, of voeg ${extra} extra kroeg + spel-koppeling toe.`,
       });
     }
     if (activeSlots < totalStations) {
       const unvisited = totalStations - activeSlots;
       warnings.push({
-        title: `Minder slots dan kroegen (${activeSlots} < ${totalStations})`,
-        body: `Je hebt ${totalStations} kroegen maar maar ${activeSlots} slots. Elke groep bezoekt dus maar ${activeSlots} van de ${totalStations} kroegen — ${unvisited} kroeg${unvisited > 1 ? "en blijven" : " blijft"} ongebruikt voor sommige groepen.`,
+        title: `Minder slots dan speelbare kroegen (${activeSlots} < ${totalStations})`,
+        body: `Je hebt ${totalStations} speelbare kroegen maar maar ${activeSlots} slots. Elke groep bezoekt dus maar ${activeSlots} van de ${totalStations} kroegen — ${unvisited} kroeg${unvisited > 1 ? "en blijven" : " blijft"} ongebruikt voor sommige groepen.`,
         advice: `Wil je dat elke groep álle kroegen bezoekt? Verhoog het aantal slots naar ${totalStations}, of verwijder ${unvisited} kroeg${unvisited > 1 ? "en" : ""}.`,
       });
     }

@@ -320,7 +320,7 @@ export default function SettingsPage() {
           <Link href="/settings/spellen" className="card" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
             <h3 style={{ margin: "0 0 8px" }}>Spellen</h3>
             <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-              Beheer je spellenbibliotheek: materialen, speluitleg en veldopzet.
+              Beheer je drankspellen: materialen, speluitleg en veldopzet.
             </p>
           </Link>
 

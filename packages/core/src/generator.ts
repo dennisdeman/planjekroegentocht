@@ -1869,9 +1869,16 @@ export function generateBestPlan(
   let best: { attempt: PlanAttempt; score: PlanScoreBreakdown } | null = null;
 
   const SLOW_STRATEGIES = new Set(["shuffled-rounds"]);
-  // Fallback "vs" voor configs zonder mode (legacy / oude tests).
-  // Nieuwe configs via createEmptyConfigV2 / wizard zetten mode expliciet.
-  const isSoloMode = config.scheduleSettings.mode === "solo";
+  // Mode-detectie: expliciete mode-veld wint. Anders fallback op station-capaciteit:
+  // als alle niet-pauze stations cap-1 hebben → Solo. Vermijdt edge case waarin
+  // mode-veld kwijt is en de Vs-strategies dan op cap-1 stations zouden falen.
+  let isSoloMode = config.scheduleSettings.mode === "solo";
+  if (config.scheduleSettings.mode === undefined) {
+    const playable = config.stations.filter((s) => s.activityTypeId !== "activity-pause");
+    if (playable.length > 0 && playable.every((s) => s.capacityGroupsMax === 1)) {
+      isSoloMode = true;
+    }
+  }
 
   for (const strategy of STRATEGY_REGISTRY) {
     if (options.fastStrategiesOnly && SLOW_STRATEGIES.has(strategy.name)) continue;

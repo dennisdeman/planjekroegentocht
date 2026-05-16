@@ -362,12 +362,27 @@ function PlannerPageInner() {
                     </div>
                     <p style={{ margin: "0 0 8px", fontSize: "0.85rem", color: "#666" }}>{alt.reason}</p>
                     <div style={{ display: "flex", gap: 12, fontSize: "0.8rem", color: "#888", marginBottom: 10, flexWrap: "wrap" }}>
-                      <span style={{ color: alt.spelCoverage.full === alt.spelCoverage.total ? "#1a6b1a" : undefined }}>
-                        {alt.spelCoverage.full === alt.spelCoverage.total
-                          ? `Alle ${alt.spelCoverage.total} groepen spelen alle spellen`
-                          : `${alt.spelCoverage.full}/${alt.spelCoverage.total} groepen alle spellen`}
-                      </span>
-                      <span>Herhalingen: {alt.achievedRepeats}</span>
+                      {activeConfig.scheduleSettings.mode === "solo" ? (
+                        <>
+                          <span style={{ color: alt.spelCoverage.full === alt.spelCoverage.total ? "#1a6b1a" : undefined }}>
+                            {alt.spelCoverage.full === alt.spelCoverage.total
+                              ? `Alle ${alt.spelCoverage.total} groepen bezoeken alle kroegen`
+                              : `${alt.spelCoverage.full}/${alt.spelCoverage.total} groepen alle kroegen`}
+                          </span>
+                          {alt.achievedRepeats > 0 && (
+                            <span>Kroegen herbezocht: {alt.achievedRepeats}</span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ color: alt.spelCoverage.full === alt.spelCoverage.total ? "#1a6b1a" : undefined }}>
+                            {alt.spelCoverage.full === alt.spelCoverage.total
+                              ? `Alle ${alt.spelCoverage.total} groepen spelen alle spellen`
+                              : `${alt.spelCoverage.full}/${alt.spelCoverage.total} groepen alle spellen`}
+                          </span>
+                          <span>Herhalingen: {alt.achievedRepeats}</span>
+                        </>
+                      )}
                     </div>
                     <button
                       type="button"

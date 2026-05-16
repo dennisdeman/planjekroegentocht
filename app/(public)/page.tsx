@@ -105,7 +105,7 @@ const softwareApplicationSchema = {
     "Publiek programma met QR-code",
     "Chat en push-notificaties tijdens de kroegentocht",
     "Foto-upload en fullscreen slideshow",
-    "Spellenbibliotheek met 20 spellen en speluitleg",
+    "Drankspellen met 20 spellen en speluitleg",
     "Materialen- en opbouwlijst",
     "Spelbegeleider-pakket en groepskaarten als PDF",
   ],
@@ -269,7 +269,7 @@ export default function HomePage() {
           </div>
           <div className="pub-card">
             <div className="pub-feature-card-icon">{"\u{1F4DA}"}</div>
-            <h3>Spellenbibliotheek</h3>
+            <h3>Drankspellen</h3>
             <p>
               20 spellen met speluitleg, materialen en veldopzet ingebouwd. Vrijwilligers
               hoeven de regels niet te kennen.

@@ -24,6 +24,7 @@ export function generatePlanSummary(
   score: PlanScoreBreakdown,
 ): PlanSummaryLine[] {
   const lines: PlanSummaryLine[] = [];
+  const isSolo = config.scheduleSettings.mode === "solo";
 
   // ── Bye / oneven pools ──
   // Detect odd groups per pool from the config
@@ -50,9 +51,11 @@ export function generatePlanSummary(
   }
 
   // ── Occupancy ──
+  // In Solo is bezetting < 100% mathematisch onvermijdelijk (1 groep per kroeg per ronde,
+  // dus bezetting = groepen / kroegen). Geen actionable signaal — alleen tonen als 100%.
   if (score.stationOccupancy >= 0.99) {
-    lines.push({ category: "occupancy", severity: "good", text: "Alle stations zijn elke ronde bezet." });
-  } else {
+    lines.push({ category: "occupancy", severity: "good", text: isSolo ? "Alle kroegen zijn elke ronde bezet." : "Alle stations zijn elke ronde bezet." });
+  } else if (!isSolo) {
     const pct = Math.round(score.stationOccupancy * 100);
     lines.push({ category: "occupancy", severity: "warn", text: `Gemiddeld ${pct}% van de stations is bezet per ronde.` });
   }
@@ -60,12 +63,14 @@ export function generatePlanSummary(
   // ── Variety ──
   const stationById = new Map(config.stations.map((s) => [s.id, s]));
   const activityById = new Map(config.activityTypes.map((a) => [a.id, a]));
-  const totalActivities = config.activityTypes.filter((a) => a.id !== "activity-pause").length;
+  const totalActivities = config.activityTypes.filter(
+    (a) => a.id !== "activity-pause" && a.id !== "activity-kroegbezoek"
+  ).length;
 
   const groupUniques = new Map<Id, Set<Id>>();
   for (const alloc of plan.allocations) {
     const station = stationById.get(alloc.stationId);
-    if (!station || station.activityTypeId === "activity-pause") continue;
+    if (!station || station.activityTypeId === "activity-pause" || station.activityTypeId === "activity-kroegbezoek") continue;
     for (const gid of alloc.groupIds) {
       let set = groupUniques.get(gid);
       if (!set) { set = new Set(); groupUniques.set(gid, set); }
@@ -112,15 +117,18 @@ export function generatePlanSummary(
   }
 
   // ── Matchup fairness ──
-  const maxAllowed = config.constraints.matchupMaxPerPair;
-  if (score.matchupMaxEncounters <= maxAllowed) {
-    if (maxAllowed === 1) {
-      lines.push({ category: "matchup", severity: "good", text: "Elke tegenstander komt maximaal 1x voor." });
+  // In Solo zijn er geen tegenstanders (elke groep loopt alleen) — skip deze hele sectie.
+  if (!isSolo) {
+    const maxAllowed = config.constraints.matchupMaxPerPair;
+    if (score.matchupMaxEncounters <= maxAllowed) {
+      if (maxAllowed === 1) {
+        lines.push({ category: "matchup", severity: "good", text: "Elke tegenstander komt maximaal 1x voor." });
+      } else {
+        lines.push({ category: "matchup", severity: "neutral", text: `Tegenstanders komen maximaal ${score.matchupMaxEncounters}x voor (limiet: ${maxAllowed}).` });
+      }
     } else {
-      lines.push({ category: "matchup", severity: "neutral", text: `Tegenstanders komen maximaal ${score.matchupMaxEncounters}x voor (limiet: ${maxAllowed}).` });
+      lines.push({ category: "matchup", severity: "warn", text: `Sommige tegenstanders komen ${score.matchupMaxEncounters}x voor (limiet: ${maxAllowed}).` });
     }
-  } else {
-    lines.push({ category: "matchup", severity: "warn", text: `Sommige tegenstanders komen ${score.matchupMaxEncounters}x voor (limiet: ${maxAllowed}).` });
   }
 
   // ── Byes ──
@@ -175,7 +183,7 @@ function buildRepeatDetails(
 
   for (const alloc of plan.allocations) {
     const station = stationById.get(alloc.stationId);
-    if (!station || station.activityTypeId === "activity-pause") continue;
+    if (!station || station.activityTypeId === "activity-pause" || station.activityTypeId === "activity-kroegbezoek") continue;
     for (const gid of alloc.groupIds) {
       let byType = countsByGroup.get(gid);
       if (!byType) { byType = new Map(); countsByGroup.set(gid, byType); }

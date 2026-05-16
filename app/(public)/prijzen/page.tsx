@@ -72,7 +72,7 @@ const productSchema = {
       {
         "@type": "Offer",
         name: "Pro Jaar",
-        description: "Onbeperkt kroegentochten per jaar, eigen sjablonen, eigen spellenbibliotheek, tot 5 teamleden.",
+        description: "Onbeperkt kroegentochten per jaar, eigen sjablonen, eigen drankspellen, tot 5 teamleden.",
         price: "24.95",
         priceCurrency: "EUR",
         availability: "https://schema.org/InStock",
@@ -87,8 +87,8 @@ const PRICING_FAQ = [
   { q: "Wat krijg ik er extra bij Pro Event ten opzichte van gratis?", a: "Het belangrijkste verschil: Pro Event geeft je toegang tot de live-modus. Daarmee kun je je kroegentocht op de dag zelf volledig digitaal draaien — scoreapp voor begeleiders, centraal scorebord, publiek programma met QR, chat, foto's en slideshow. Plus alle PDF-exports en de AI-advisor." },
   { q: "Wat gebeurt er na de 7 dagen proefperiode?", a: "Je wordt gevraagd om te upgraden. Je configuratie blijft bewaard en is weer toegankelijk zodra je upgradet." },
   { q: "Wat gebeurt er na 30 dagen Pro Event?", a: "Je planning bevriest: je kunt hem nog bekijken maar niet meer bewerken of exporteren. De live-modus is dan ook afgesloten. Wil je weer aanpassen of een nieuwe kroegentocht maken? Koop opnieuw Pro Event of upgrade naar Pro Jaar." },
-  { q: "Wat als ik elk jaar een kroegentocht organiseer?", a: "Met Pro Jaar bewaar je je sjablonen en je eigen spellenbibliotheek. Volgend jaar open je je sjabloon, past de groepsnamen aan, en je bent klaar." },
-  { q: "Kan ik met collega's samenwerken?", a: "Met Pro Jaar kun je tot 5 teamleden uitnodigen in je organisatie. Iedereen kan planningen bekijken, bewerken en de spellenbibliotheek delen." },
+  { q: "Wat als ik elk jaar een kroegentocht organiseer?", a: "Met Pro Jaar bewaar je je sjablonen en je eigen drankspellen. Volgend jaar open je je sjabloon, past de groepsnamen aan, en je bent klaar." },
+  { q: "Kan ik met collega's samenwerken?", a: "Met Pro Jaar kun je tot 5 teamleden uitnodigen in je organisatie. Iedereen kan planningen bekijken, bewerken en de drankspellen delen." },
   { q: "Wij zijn een stichting met meerdere scholen.", a: "Neem contact met ons op via support@planjekroegentocht.nl, dan bespreken we een stichtingslicentie." },
   { q: "Kan ik upgraden van Pro Event naar Pro Jaar?", a: "Ja, op elk moment. Je betaalt naar rato bij — alleen het verschil voor de resterende tijd, en je krijgt direct alle extra functies." },
   { q: "Hoe werkt betalen?", a: "Via iDEAL of bankoverschrijving (Mollie). Je ontvangt automatisch een factuur per e-mail. Voor zakelijk: je kunt bedrijfsgegevens en BTW-nummer invullen voor een correcte factuur." },
@@ -159,7 +159,7 @@ export default function PrijzenPage() {
               <li>Publiek programma met QR-code</li>
               <li>Chat &amp; broadcast met push-notificaties</li>
               <li>Foto-upload &amp; slideshow</li>
-              <li>Spellenbibliotheek met speluitleg</li>
+              <li>Drankspellen met speluitleg</li>
               <li>Materialen-/opbouwlijst</li>
               <li>Alle PDF-exports (rooster, groepskaarten, spelbegeleider-pakket, QR-codes)</li>
               <li>Excel en CSV export</li>
@@ -185,7 +185,7 @@ export default function PrijzenPage() {
               <li>Onbeperkt kroegentochten per jaar</li>
               <li>Tot 3 planningen tegelijk</li>
               <li>Eigen sjablonen opslaan</li>
-              <li>Eigen spellenbibliotheek voor de organisatie</li>
+              <li>Eigen drankspellen voor de organisatie</li>
               <li>Tot 5 teamleden samenwerken</li>
               <li>Planning- &amp; kroegentocht-geschiedenis</li>
               <li>Prioriteit support</li>

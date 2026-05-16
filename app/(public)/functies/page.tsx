@@ -6,7 +6,7 @@ import { JsonLd } from "@ui/json-ld";
 
 const SITE_URL = "https://planjekroegentocht.nl";
 const TITLE = "Functies — Plan je Kroegentocht";
-const DESCRIPTION = "Alle functies van Plan je Kroegentocht: planning, generator, drag-and-drop, scoreapp voor begeleiders, centraal scorebord, foto's, chat, spellenbibliotheek, materialenlijst en meer.";
+const DESCRIPTION = "Alle functies van Plan je Kroegentocht: planning, generator, drag-and-drop, scoreapp voor begeleiders, centraal scorebord, foto's, chat, drankspellen, materialenlijst en meer.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -152,7 +152,7 @@ const COMMUNICATIE: Feature[] = [
 const INHOUD: Feature[] = [
   {
     icon: "\u{1F4DA}",
-    title: "Spellenbibliotheek met speluitleg",
+    title: "Drankspellen met speluitleg",
     text: "20 spellen ingebouwd met regels, veldopzet, aantal spelers per team en variant-opties. Voor vrijwilligers en ouders die de regels niet kennen — staat ook in het spelbegeleider-pakket.",
   },
   {
@@ -209,7 +209,7 @@ const SAMENWERKEN: Feature[] = [
   {
     icon: "\u{1F465}",
     title: "Teams — samen organiseren",
-    text: "Nodig collega's uit in je organisatie. Deel configuraties, planningen, spellenbibliotheek en sjablonen. Twee rollen: beheerder en lid. Tot 5 leden in Pro Jaar.",
+    text: "Nodig collega's uit in je organisatie. Deel configuraties, planningen, drankspellen en sjablonen. Twee rollen: beheerder en lid. Tot 5 leden in Pro Jaar.",
   },
   {
     icon: "\u{1F5C2}️",

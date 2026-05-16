@@ -29,18 +29,6 @@ import { useWalkingMatrix, lookupSeconds } from "@lib/use-walking-matrix";
 import { getVenueTypeBadge } from "@lib/venue-type-badge";
 import { SpelPickerModal } from "@ui/spel-picker-modal";
 
-function pretty(value: unknown): string {
-  return JSON.stringify(value, null, 2);
-}
-
-function parseJsonArray<T>(raw: string, label: string): T[] {
-  const parsed = JSON.parse(raw) as unknown;
-  if (!Array.isArray(parsed)) {
-    throw new Error(`${label} moet een array zijn.`);
-  }
-  return parsed as T[];
-}
-
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
@@ -120,6 +108,9 @@ function nextNumericId(prefix: string, existingIds: Id[]): Id {
   }
   return `${prefix}-${seq}`;
 }
+
+const KROEGBEZOEK_ACTIVITY_ID = "activity-kroegbezoek";
+const KROEGBEZOEK_ACTIVITY_NAME = "Kroegbezoek";
 
 function haversineMeters(
   a: { lat: number; lng: number },
@@ -231,32 +222,6 @@ function sortedTimeslots(timeslots: TimeslotV2[]): TimeslotV2[] {
   return [...timeslots].sort((a, b) => a.index - b.index);
 }
 
-function findBlockRange(block: LocationBlockV2, orderedTimeslots: TimeslotV2[]): { startId: Id; endId: Id } {
-  const indices = block.timeslotIds
-    .map((slotId) => orderedTimeslots.findIndex((slot) => slot.id === slotId))
-    .filter((index) => index >= 0)
-    .sort((a, b) => a - b);
-  if (indices.length === 0) {
-    const fallback = orderedTimeslots[0]?.id ?? "";
-    return { startId: fallback, endId: fallback };
-  }
-  return {
-    startId: orderedTimeslots[indices[0]].id,
-    endId: orderedTimeslots[indices[indices.length - 1]].id,
-  };
-}
-
-function timeslotRange(startId: Id, endId: Id, orderedTimeslots: TimeslotV2[]): Id[] {
-  const startIndex = orderedTimeslots.findIndex((slot) => slot.id === startId);
-  const endIndex = orderedTimeslots.findIndex((slot) => slot.id === endId);
-  if (startIndex === -1 || endIndex === -1) {
-    return [];
-  }
-  const from = Math.min(startIndex, endIndex);
-  const to = Math.max(startIndex, endIndex);
-  return orderedTimeslots.slice(from, to + 1).map((slot) => slot.id);
-}
-
 function reindexTimeslots(list: TimeslotV2[]): TimeslotV2[] {
   return sortedTimeslots(list).map((slot, idx) => ({ ...slot, index: idx + 1 }));
 }
@@ -317,10 +282,6 @@ const HELP_TEXT = {
     title: "Routes gebruiken",
     body: "Zet dit aan als groepen via parallelle routes moeten spelen (bijv. Route A en Route B). Elke route bezoekt zijn eigen reeks kroegen.",
   },
-  movementPolicy: {
-    title: "Verplaatsbeleid",
-    body: "Bepaalt hoe parallelle routes zich over de kroegen verdelen. Alleen relevant als 'Routes gebruiken' aan staat.\n\n• Vrij — elke route mag in elk slot in elke kroeg spelen. Routes mengen naar believen.\n\n• Blokken — routes krijgen vaste kroegen per slot-bereik. Bv. de eerste 3 slots speelt Route A in Kroeg 1 en Route B in Kroeg 2, daarna swap. Voorkomt dat verschillende routes onverwacht op dezelfde kroeg samenkomen.",
-  },
   matchupMaxPerPair: {
     title: "Maximaal keer dezelfde tegenstander",
     body: "Bepaalt hoe vaak hetzelfde duo tegen elkaar mag uitkomen. Meestal is dit 1.",
@@ -379,7 +340,7 @@ const HELP_TEXT = {
   },
   locationsTips: {
     title: "Tips voor het kiezen van kroegen",
-    body: "Voor je je kroegen toevoegt, check per locatie:\n\n• 🕒 Openingstijden — is de kroeg open op je dag + tijdstip? Zeker bij overdag-locaties (cafés/restaurants) verschilt dit per dag. Klik op de domeinnaam naast het adres voor de website.\n\n• 🏷️ Type-label — 🍺 Bar / 🍻 Pub / ☕ Café / 🎵 Nightclub is de Google-classificatie. Een 'Bar' kan in de praktijk ook een eetzaak zijn die 's avonds dranken schenkt. Check zelf de sfeer.\n\n• 🎮 Past het bij je idee? Een rustig café past misschien niet bij een vrijgezellenavond met luide spellen. Een nightclub is dan weer onhandig voor een rustig spel als Categorieën.\n\n• 👥 Groepsgrootte — past je groep in de kroeg? Sommige kleine bruine cafés hebben maar 20 zitplaatsen. Bel evt. om te reserveren als je met >10 mensen komt.\n\n• 🚶 Looptijd — gebruik 'Op kaart' en 'Sorteer op route' om te checken hoever de kroegen uit elkaar liggen. Hou rekening met drukke straten / grachten.\n\n• 💰 Prijs (€ €€ €€€) — toon bij sommige kroegen. Hou rekening met je groep's budget — drank in een hotelbar is duurder dan in een bruine kroeg.\n\n• 🔞 18+ check — drankspellen vereisen meerderjarigheid; controleer dat de kroeg geen aparte minimum-leeftijd hanteert (sommige nightclubs zijn 21+).",
+    body: "Voor je je kroegen toevoegt, check per locatie:\n\n• 🕒 Openingstijden — is de kroeg open op je dag + tijdstip? Zeker bij overdag-locaties (cafés/restaurants) verschilt dit per dag. Klik op de domeinnaam naast het adres voor de website.\n\n• 🏷️ Type-label — 🍺 Bar / 🍻 Pub / ☕ Café / 🎵 Nightclub is de Google-classificatie. Een 'Bar' kan in de praktijk ook een eetzaak zijn die 's avonds dranken schenkt. Check zelf de sfeer.\n\n• 🎮 Past het bij je idee? Een rustig café past misschien niet bij een vrijgezellenavond met luide spellen. Een nightclub is dan weer onhandig voor een rustig spel als Categorieën.\n\n• 👥 Groepsgrootte — past je groep in de kroeg? Sommige kleine bruine cafés hebben maar 20 zitplaatsen. Bel evt. om te reserveren als je met >10 mensen komt.\n\n• 🚶 Looptijd — gebruik 'Route bekijken' en 'Sorteer op route' om te checken hoever de kroegen uit elkaar liggen. Hou rekening met drukke straten / grachten.\n\n• 💰 Prijs (€ €€ €€€) — toon bij sommige kroegen. Hou rekening met je groep's budget — drank in een hotelbar is duurder dan in een bruine kroeg.\n\n• 🔞 18+ check — drankspellen vereisen meerderjarigheid; controleer dat de kroeg geen aparte minimum-leeftijd hanteert (sommige nightclubs zijn 21+).",
   },
 } as const;
 
@@ -556,18 +517,8 @@ export default function ConfiguratorPage() {
 function ConfiguratorContent() {
   const router = useRouter();
   const [configId, setConfigId] = useState<string | null>(null);
-  const [segmentsRaw, setSegmentsRaw] = useState("");
-  const [groupsRaw, setGroupsRaw] = useState("");
-  const [locationsRaw, setLocationsRaw] = useState("");
-  const [activityTypesRaw, setActivityTypesRaw] = useState("");
-  const [stationsRaw, setStationsRaw] = useState("");
-  const [timeslotsRaw, setTimeslotsRaw] = useState("");
-  const [blocksRaw, setBlocksRaw] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advancedTouched, setAdvancedTouched] = useState(false);
   const [activeHelp, setActiveHelp] = useState<HelpKey | null>(null);
   const [csvInput, setCsvInput] = useState("");
-  const [jsonError, setJsonError] = useState<string | null>(null);
   const [startMode, setStartMode] = useState<StartMode>("empty");
   const [templates, setTemplates] = useState<ConfigTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -694,14 +645,6 @@ function ConfiguratorContent() {
   }, [activeConfig.id, editingMembersGroupId]);
 
   useEffect(() => {
-    setSegmentsRaw(pretty(activeConfig.segments));
-    setGroupsRaw(pretty(activeConfig.groups));
-    setLocationsRaw(pretty(activeConfig.locations));
-    setActivityTypesRaw(pretty(activeConfig.activityTypes));
-    setStationsRaw(pretty(activeConfig.stations));
-    setTimeslotsRaw(pretty(activeConfig.timeslots));
-    setBlocksRaw(pretty(activeConfig.locationBlocks ?? []));
-
     const ordered = sortedTimeslots(activeConfig.timeslots);
     if (ordered.length > 0) {
       setScheduleStart(formatTimeFromIso(ordered[0].start));
@@ -744,12 +687,6 @@ function ConfiguratorContent() {
     [activeConfig]
   );
 
-  const missingCoreItems =
-    summary.groups === 0 ||
-    summary.locations === 0 ||
-    summary.activityTypes === 0 ||
-    summary.stations === 0;
-
   const hasAnyData =
     summary.groups > 0 ||
     summary.locations > 0 ||
@@ -779,41 +716,6 @@ function ConfiguratorContent() {
     () => sortedTimeslots(activeConfig.timeslots),
     [activeConfig.timeslots]
   );
-
-  useEffect(() => {
-    if (advancedTouched) {
-      return;
-    }
-    const hasSomeConfiguredData =
-      summary.groups +
-        summary.locations +
-        summary.activityTypes +
-        summary.stations +
-        summary.segments +
-        summary.timeslots >
-      0;
-    if (missingCoreItems && hasSomeConfiguredData) {
-      setAdvancedOpen(true);
-    }
-  }, [advancedTouched, missingCoreItems, summary]);
-
-  const applyJsonSections = () => {
-    try {
-      const nextConfig: Partial<ConfigV2> = {
-        segments: parseJsonArray(segmentsRaw, "segments"),
-        groups: parseJsonArray(groupsRaw, "groups"),
-        locations: parseJsonArray(locationsRaw, "locations"),
-        activityTypes: parseJsonArray(activityTypesRaw, "activityTypes"),
-        stations: parseJsonArray(stationsRaw, "stations"),
-        timeslots: parseJsonArray(timeslotsRaw, "timeslots"),
-        locationBlocks: parseJsonArray(blocksRaw, "locationBlocks"),
-      };
-      updateConfig(nextConfig);
-      setJsonError(null);
-    } catch (error) {
-      setJsonError(error instanceof Error ? error.message : "JSON kon niet worden verwerkt.");
-    }
-  };
 
   const updateSegments = (segments: ConfigV2["segments"]) => {
     const segmentIds = new Set(segments.map((segment) => segment.id));
@@ -894,101 +796,13 @@ function ConfiguratorContent() {
       activityTypes: cleanedActivityTypes,
       pauseActivity: undefined,
       scheduleSettings: {
+        ...activeConfig.scheduleSettings,
         roundDurationMinutes: Math.max(5, Number(scheduleDuration) || 5),
         transitionMinutes: Math.max(0, Number(scheduleTransition) || 0),
-        scheduleMode: activeConfig.scheduleSettings.scheduleMode,
       },
     });
   };
 
-  const updateBlockRange = (blockId: Id, startId: Id, endId: Id) => {
-    const blocks = activeConfig.locationBlocks ?? [];
-    const next = blocks.map((block) =>
-      block.id === blockId
-        ? {
-            ...block,
-            timeslotIds: timeslotRange(startId, endId, orderedTimeslots),
-          }
-        : block
-    );
-    updateConfig({ locationBlocks: next });
-  };
-
-  const addBlock = () => {
-    if (orderedTimeslots.length === 0) {
-      showMessage("Maak eerst tijdslots aan.");
-      return;
-    }
-    const nextId = nextNumericId(
-      "block",
-      (activeConfig.locationBlocks ?? []).map((block) => block.id)
-    );
-    const defaultMapping = Object.fromEntries(
-      activeConfig.segments.map((segment, index) => [
-        segment.id,
-        activeConfig.locations[index % Math.max(activeConfig.locations.length, 1)]?.id ?? "",
-      ])
-    );
-    updateConfig({
-      locationBlocks: [
-        ...(activeConfig.locationBlocks ?? []),
-        {
-          id: nextId,
-          name: `Blok ${(activeConfig.locationBlocks ?? []).length + 1}`,
-          timeslotIds: [orderedTimeslots[0].id],
-          segmentLocationMap: defaultMapping,
-        },
-      ],
-    });
-  };
-
-  const applySwapBlocksPreset = () => {
-    if (activeConfig.segments.length < 2 || activeConfig.locations.length < 2) {
-      showMessage("Auto-wissel vereist minimaal 2 pools en 2 velden.");
-      return;
-    }
-    const sorted = orderedTimeslots;
-    const breakSlot = sorted.find((slot) => slot.kind === "break");
-    if (!breakSlot) {
-      showMessage("Geen pauzeslot gevonden. Markeer eerst een slot als pauze.");
-      return;
-    }
-    const before = sorted.filter((slot) => slot.kind === "active" && slot.index < breakSlot.index);
-    const after = sorted.filter((slot) => slot.kind === "active" && slot.index > breakSlot.index);
-    if (before.length === 0 || after.length === 0) {
-      showMessage("Auto-wissel verwacht actieve slots voor en na de pauze.");
-      return;
-    }
-
-    const segA = activeConfig.segments[0].id;
-    const segB = activeConfig.segments[1].id;
-    const locA = activeConfig.locations[0].id;
-    const locB = activeConfig.locations[1].id;
-
-    updateConfig({
-      movementPolicy: "blocks",
-      locationBlocks: [
-        {
-          id: "block-1",
-          name: "Blok 1",
-          timeslotIds: before.map((slot) => slot.id),
-          segmentLocationMap: {
-            [segA]: locA,
-            [segB]: locB,
-          },
-        },
-        {
-          id: "block-2",
-          name: "Blok 2",
-          timeslotIds: after.map((slot) => slot.id),
-          segmentLocationMap: {
-            [segA]: locB,
-            [segB]: locA,
-          },
-        },
-      ],
-    });
-  };
 
   // ── Template functions ──────────────────────────────────────────────
   const loadTemplates = async () => {
@@ -1315,19 +1129,52 @@ function ConfiguratorContent() {
    * Auto-koppel toegevoegde kroegen aan nog-niet-gekoppelde spellen (Solo-mode).
    * Voor elke nieuwe locatie zonder station: pak het eerstvolgende activityType
    * dat nog geen station heeft, en maak een Solo-station (cap 1/1).
+   *
+   * Bij `gamesEnabled === false`: koppel alle nieuwe kroegen aan de synthetic
+   * "Kroegbezoek"-activityType (puur kroegentocht zonder spellen).
    */
   function autoCoupleStations(
     existingStations: ConfigV2["stations"],
     activityTypes: ConfigV2["activityTypes"],
     newLocationIds: string[]
-  ): ConfigV2["stations"] {
-    if (activeConfig.scheduleSettings.mode !== "solo") return existingStations;
-    const usedActivityIds = new Set(existingStations.map((s) => s.activityTypeId));
-    const available = activityTypes.filter((a) => !usedActivityIds.has(a.id));
-    if (available.length === 0) return existingStations;
+  ): { activityTypes: ConfigV2["activityTypes"]; stations: ConfigV2["stations"] } {
+    if (activeConfig.scheduleSettings.mode !== "solo") {
+      return { activityTypes, stations: existingStations };
+    }
     const stationIdsInUse = existingStations.map((s) => s.id);
     const out = [...existingStations];
     let nextIdSeed = stationIdsInUse;
+
+    if (activeConfig.gamesEnabled === false) {
+      // Kroegentocht-only mode: 1 station per nieuwe kroeg met Kroegbezoek-activityType.
+      let nextActivityTypes = activityTypes;
+      if (!nextActivityTypes.some((a) => a.id === KROEGBEZOEK_ACTIVITY_ID)) {
+        nextActivityTypes = [
+          ...nextActivityTypes,
+          { id: KROEGBEZOEK_ACTIVITY_ID, name: KROEGBEZOEK_ACTIVITY_NAME, baseId: null },
+        ];
+      }
+      for (const locId of newLocationIds) {
+        const newId = nextNumericId("station", nextIdSeed);
+        nextIdSeed = [...nextIdSeed, newId];
+        out.push({
+          id: newId,
+          name: `Bezoek ${out.length + 1}`,
+          locationId: locId,
+          activityTypeId: KROEGBEZOEK_ACTIVITY_ID,
+          capacityGroupsMin: 1,
+          capacityGroupsMax: 1,
+        });
+      }
+      return { activityTypes: nextActivityTypes, stations: out };
+    }
+
+    // Klassiek: koppel aan unassigned spel.
+    const usedActivityIds = new Set(existingStations.map((s) => s.activityTypeId));
+    const available = activityTypes.filter(
+      (a) => !usedActivityIds.has(a.id) && a.id !== KROEGBEZOEK_ACTIVITY_ID
+    );
+    if (available.length === 0) return { activityTypes, stations: existingStations };
     for (const locId of newLocationIds) {
       const spel = available.shift();
       if (!spel) break;
@@ -1342,7 +1189,7 @@ function ConfiguratorContent() {
         capacityGroupsMax: 1,
       });
     }
-    return out;
+    return { activityTypes, stations: out };
   }
 
   function runGeneration() {
@@ -1477,12 +1324,16 @@ function ConfiguratorContent() {
           onSave={(loc) => {
             const id = nextNumericId("locatie", activeConfig.locations.map((l) => l.id));
             const nextLocations = [...activeConfig.locations, { id, ...loc }];
-            const nextStations = autoCoupleStations(
+            const coupled = autoCoupleStations(
               activeConfig.stations,
               activeConfig.activityTypes,
               [id]
             );
-            updateConfig({ locations: nextLocations, stations: nextStations });
+            updateConfig({
+              locations: nextLocations,
+              stations: coupled.stations,
+              activityTypes: coupled.activityTypes,
+            });
           }}
         />
       )}
@@ -1493,9 +1344,41 @@ function ConfiguratorContent() {
           excludeNames={activeConfig.activityTypes.map((a) => a.name)}
           onSelect={(spel) => {
             const id = nextNumericId("activity", activeConfig.activityTypes.map((a) => a.id));
-            updateConfig({
-              activityTypes: [...activeConfig.activityTypes, { id, name: spel.name, baseId: spel.baseKey }],
-            });
+            const nextActivityTypes = [
+              ...activeConfig.activityTypes,
+              { id, name: spel.name, baseId: spel.baseKey },
+            ];
+            // Solo + gamesEnabled aan: auto-couple aan eerstvolgende spel-loze kroeg
+            // zodat de Spellen-tab als beheer-paneel werkt (analoog aan auto-couple bij kroeg-toevoegen).
+            const isSolo = activeConfig.scheduleSettings.mode === "solo";
+            const gamesEnabled = activeConfig.gamesEnabled !== false;
+            let nextStations = activeConfig.stations;
+            if (isSolo && gamesEnabled) {
+              const linkedLocIds = new Set(
+                activeConfig.stations
+                  .filter((s) => s.activityTypeId !== "activity-pause")
+                  .map((s) => s.locationId)
+              );
+              const firstUnlinked = activeConfig.locations.find((l) => !linkedLocIds.has(l.id));
+              if (firstUnlinked) {
+                const newStationId = nextNumericId(
+                  "station",
+                  activeConfig.stations.map((s) => s.id)
+                );
+                nextStations = [
+                  ...activeConfig.stations,
+                  {
+                    id: newStationId,
+                    name: `Station ${activeConfig.stations.length + 1}`,
+                    locationId: firstUnlinked.id,
+                    activityTypeId: id,
+                    capacityGroupsMin: 1,
+                    capacityGroupsMax: 1,
+                  },
+                ];
+              }
+            }
+            updateConfig({ activityTypes: nextActivityTypes, stations: nextStations });
           }}
         />
       )}
@@ -1602,6 +1485,8 @@ function ConfiguratorContent() {
           existingSourceIds={activeConfig.locations
             .map((l) => l.sourceId)
             .filter((id): id is string => Boolean(id))}
+          existingLocations={activeConfig.locations}
+          cacheKey={activeConfig.id}
           onAdd={(venues) => {
             const existingIds = activeConfig.locations.map((l) => l.id);
             const nextLocations = [...activeConfig.locations];
@@ -1611,12 +1496,16 @@ function ConfiguratorContent() {
               nextLocations.push({ id, ...v });
               newIds.push(id);
             }
-            const nextStations = autoCoupleStations(
+            const coupled = autoCoupleStations(
               activeConfig.stations,
               activeConfig.activityTypes,
               newIds
             );
-            updateConfig({ locations: nextLocations, stations: nextStations });
+            updateConfig({
+              locations: nextLocations,
+              stations: coupled.stations,
+              activityTypes: coupled.activityTypes,
+            });
           }}
         />
       )}
@@ -1760,7 +1649,6 @@ function ConfiguratorContent() {
                 onClick={async () => {
                   await saveCurrent();
                   usePreset(confirmLoadPreset);
-                  setJsonError(null);
                   setConfirmLoadPreset(false);
                   showMessage("Configuratie opgeslagen en voorbeeld geladen.", "success");
                 }}
@@ -1772,7 +1660,6 @@ function ConfiguratorContent() {
                 className="btn-secondary"
                 onClick={() => {
                   usePreset(confirmLoadPreset);
-                  setJsonError(null);
                   setConfirmLoadPreset(false);
                 }}
               >
@@ -1888,8 +1775,7 @@ function ConfiguratorContent() {
                             return;
                           }
                           usePreset(preset.key);
-                          setJsonError(null);
-                        }}>
+                                }}>
                           {exceedsLimit ? "Pro" : "Laden"}
                         </button>
                       </div>
@@ -1975,16 +1861,6 @@ function ConfiguratorContent() {
             </button>
             <button
               type="button"
-              className={advancedOpen ? "is-active" : "btn-ghost"}
-              onClick={() => {
-                setAdvancedTouched(true);
-                setAdvancedOpen((v) => !v);
-              }}
-            >
-              {advancedOpen ? "Verberg JSON" : "JSON editors"}
-            </button>
-            <button
-              type="button"
               className="btn-ghost"
               onClick={() => {
                 if (dirty) {
@@ -2036,18 +1912,71 @@ function ConfiguratorContent() {
             />
             <LabelWithHelp text="Routes gebruiken" helpKey="segmentsEnabled" onOpenHelp={setActiveHelp} />
           </label>
-          {activeConfig.segmentsEnabled ? (
-            <label>
-              <LabelWithHelp text="Verplaatsbeleid" helpKey="movementPolicy" onOpenHelp={setActiveHelp} />
-              <select
-                value={activeConfig.movementPolicy}
-                onChange={(event) =>
-                  updateConfig({ movementPolicy: event.target.value as ConfigV2["movementPolicy"] })
-                }
-              >
-                <option value="free">Vrij</option>
-                <option value="blocks">Blokken</option>
-              </select>
+          {(activeConfig.scheduleSettings.mode ?? "solo") === "solo" ? (
+            <label className="toggle-field" title="Aan: koppel een spel aan elke kroeg. Uit: pure kroegentocht — kroegen worden bezocht zonder spel.">
+              <input
+                type="checkbox"
+                checked={activeConfig.gamesEnabled !== false}
+                onChange={async (event) => {
+                  const enable = event.target.checked;
+                  if (!enable) {
+                    const hasSpelStations = activeConfig.stations.some(
+                      (s) => s.activityTypeId !== KROEGBEZOEK_ACTIVITY_ID && s.activityTypeId !== "activity-pause"
+                    );
+                    if (hasSpelStations) {
+                      const ok = await confirmDialog({
+                        title: "Spellen uitzetten",
+                        message: "Alle gekoppelde spellen worden ontkoppeld. De spellen-lijst blijft bewaard maar wordt niet gebruikt. Doorgaan?",
+                        confirmLabel: "Uitzetten",
+                        variant: "danger",
+                      });
+                      if (!ok) return;
+                    }
+                    let nextActivityTypes = activeConfig.activityTypes;
+                    if (!nextActivityTypes.some((a) => a.id === KROEGBEZOEK_ACTIVITY_ID)) {
+                      nextActivityTypes = [
+                        ...nextActivityTypes,
+                        { id: KROEGBEZOEK_ACTIVITY_ID, name: KROEGBEZOEK_ACTIVITY_NAME, baseId: null },
+                      ];
+                    }
+                    const seedIds: Id[] = [];
+                    const nextStations = activeConfig.locations.map((loc, idx) => {
+                      const id = nextNumericId("station", seedIds);
+                      seedIds.push(id);
+                      return {
+                        id,
+                        name: `Bezoek ${idx + 1}`,
+                        locationId: loc.id,
+                        activityTypeId: KROEGBEZOEK_ACTIVITY_ID,
+                        capacityGroupsMin: 1,
+                        capacityGroupsMax: 1,
+                      };
+                    });
+                    updateConfig({
+                      gamesEnabled: false,
+                      activityTypes: nextActivityTypes,
+                      stations: nextStations,
+                    });
+                  } else {
+                    const hasKroegbezoekStations = activeConfig.stations.some(
+                      (s) => s.activityTypeId === KROEGBEZOEK_ACTIVITY_ID
+                    );
+                    if (hasKroegbezoekStations) {
+                      const ok = await confirmDialog({
+                        title: "Spellen aanzetten",
+                        message: "Kroegbezoek-koppelingen worden weggegooid. Je koppelt zelf spellen per kroeg. Doorgaan?",
+                        confirmLabel: "Aanzetten",
+                      });
+                      if (!ok) return;
+                    }
+                    const nextStations = activeConfig.stations.filter(
+                      (s) => s.activityTypeId !== KROEGBEZOEK_ACTIVITY_ID
+                    );
+                    updateConfig({ gamesEnabled: true, stations: nextStations });
+                  }
+                }}
+              />
+              <span>🎮 Spellen activeren</span>
             </label>
           ) : null}
           <fieldset>
@@ -2262,22 +2191,36 @@ function ConfiguratorContent() {
         </CollapsibleSection>
       </section>
 
-      <section className="card" id="section-spellen" style={activeConfig.scheduleSettings.mode === "solo" ? { display: "none" } : undefined}>
-        <CollapsibleSection
-          title="Spellen"
-          count={activeConfig.activityTypes.length}
-          defaultOpen={activeConfig.activityTypes.length === 0}
-          actions={
-            <button type="button" className="btn-sm" onClick={() => setShowSpelPicker(true)}>
-              + Spel toevoegen
-            </button>
-          }
-        >
-        <div className="editor-list">
-          {activeConfig.activityTypes.length === 0 && (
-            <p className="muted">Nog geen spellen toegevoegd. Klik op &quot;+ Spel toevoegen&quot; om er een uit je bibliotheek te kiezen.</p>
-          )}
-          {activeConfig.activityTypes.map((activityType) => (
+      {(() => {
+        // Spellen-tab:
+        // - Vs-mode: altijd zichtbaar
+        // - Solo + gamesEnabled aan: zichtbaar zodat user activityTypes kan beheren
+        // - Solo + gamesEnabled uit: verborgen (kroegbezoek-only, geen spellen relevant)
+        const isSolo = activeConfig.scheduleSettings.mode === "solo";
+        const gamesEnabled = activeConfig.gamesEnabled !== false;
+        if (isSolo && !gamesEnabled) return null;
+        // Filter Kroegbezoek-placeholder uit de getoonde lijst — die hoort niet
+        // in de Spellen-tab, alleen als achterliggend mechanisme bij toggle-OFF.
+        const visibleActivityTypes = activeConfig.activityTypes.filter(
+          (a) => a.id !== KROEGBEZOEK_ACTIVITY_ID && a.id !== "activity-pause"
+        );
+        return (
+          <section className="card" id="section-spellen">
+            <CollapsibleSection
+              title="Spellen"
+              count={visibleActivityTypes.length}
+              defaultOpen={visibleActivityTypes.length === 0}
+              actions={
+                <button type="button" className="btn-sm" onClick={() => setShowSpelPicker(true)}>
+                  + Spel toevoegen
+                </button>
+              }
+            >
+            <div className="editor-list">
+              {visibleActivityTypes.length === 0 && (
+                <p className="muted">Nog geen spellen toegevoegd. Klik op &quot;+ Spel toevoegen&quot; om er een uit je bibliotheek te kiezen.{isSolo ? " Spellen worden automatisch aan kroegen gekoppeld zodra je beide hebt." : ""}</p>
+              )}
+              {visibleActivityTypes.map((activityType) => (
             <div key={activityType.id} className="editor-row" style={{ alignItems: "center" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 500 }}>{activityType.name}</div>
@@ -2312,13 +2255,23 @@ function ConfiguratorContent() {
               </button>
             </div>
           ))}
-        </div>
-        </CollapsibleSection>
-      </section>
+            </div>
+            </CollapsibleSection>
+          </section>
+        );
+      })()}
 
-      {activeConfig.activityTypes.length > 0 && activeConfig.stations.length > 0 && (
-        <MaterialsSection config={activeConfig} onUpdateOverrides={(overrides) => updateConfig({ materialOverrides: overrides })} />
-      )}
+      {(() => {
+        // Materialen-tab alleen tonen als er "echte" speelbare stations zijn —
+        // dus geen pauze, geen kroegbezoek-placeholder.
+        const playableStations = activeConfig.stations.filter(
+          (s) => s.activityTypeId !== KROEGBEZOEK_ACTIVITY_ID && s.activityTypeId !== "activity-pause"
+        );
+        if (playableStations.length === 0) return null;
+        return (
+          <MaterialsSection config={activeConfig} onUpdateOverrides={(overrides) => updateConfig({ materialOverrides: overrides })} />
+        );
+      })()}
 
       <section className="card" id="section-locaties">
         <CollapsibleSection
@@ -2375,9 +2328,9 @@ function ConfiguratorContent() {
                   type="button"
                   className="btn-sm btn-ghost"
                   onClick={() => setShowRouteMap(true)}
-                  title="Bekijk locaties op de kaart en pas volgorde aan"
+                  title="Bekijk de route op de kaart en pas volgorde aan"
                 >
-                  🗺️ Op kaart
+                  🗺️ Route bekijken
                 </button>
               ) : null}
             </>
@@ -2388,9 +2341,7 @@ function ConfiguratorContent() {
             <p style={{ margin: 0, fontSize: "0.9rem" }}>
               ✨ <strong>Voeg je kroegen toe</strong> — klik op <em>🔍 Zoek meerdere kroegen</em> om
               in één keer cafés in je stad op te zoeken, of op <em>+ Locatie</em> voor handmatig invoeren.
-              Spellen worden automatisch aan kroegen gekoppeld in volgorde
-              ({activeConfig.activityTypes.map((a) => a.name).slice(0, 3).join(", ")}
-              {activeConfig.activityTypes.length > 3 ? `, … (${activeConfig.activityTypes.length} totaal)` : ""}).
+              Spellen worden automatisch aan kroegen gekoppeld en kun je zelf daarna wijzigen.
             </p>
           </div>
         ) : null}
@@ -2488,6 +2439,17 @@ function ConfiguratorContent() {
                   </div>
                 )}
                 {activeConfig.scheduleSettings.mode === "solo" ? (() => {
+                  const gamesEnabled = activeConfig.gamesEnabled !== false;
+                  if (!gamesEnabled) {
+                    return (
+                      <div
+                        style={{ marginTop: 4, fontSize: "0.8rem", color: "var(--muted)" }}
+                        title="Pure kroegentocht — geen spel gekoppeld"
+                      >
+                        🍻 Kroegbezoek
+                      </div>
+                    );
+                  }
                   const station = activeConfig.stations.find((s) => s.locationId === location.id);
                   const spel = station
                     ? activeConfig.activityTypes.find((a) => a.id === station.activityTypeId)
@@ -2712,9 +2674,9 @@ function ConfiguratorContent() {
                 setScheduleTransition(nextTransition);
                 updateConfig({
                   scheduleSettings: {
+                    ...activeConfig.scheduleSettings,
                     roundDurationMinutes: Math.max(5, Number(scheduleDuration) || 15),
                     transitionMinutes: nextTransition,
-                    scheduleMode: activeConfig.scheduleSettings.scheduleMode,
                   },
                 });
               }}
@@ -2817,9 +2779,9 @@ function ConfiguratorContent() {
                 timeslots: reindexed,
                 locationBlocks: remapped,
                 scheduleSettings: {
+                  ...activeConfig.scheduleSettings,
                   roundDurationMinutes: Math.max(5, Number(scheduleDuration) || 15),
                   transitionMinutes: transition,
-                  scheduleMode: activeConfig.scheduleSettings.scheduleMode,
                 },
               });
             }}
@@ -2953,198 +2915,6 @@ function ConfiguratorContent() {
         </CollapsibleSection>
       </section>
 
-      <section className="card">
-        <CollapsibleSection title="Blokken (pool → veld)" count={activeConfig.locationBlocks?.length ?? 0} defaultOpen={false} actions={<><button type="button" className="btn-sm" onClick={addBlock}>+ Blok</button><button type="button" className="btn-sm btn-ghost" onClick={applySwapBlocksPreset}>Auto: wissel na pauze</button></>}>
-
-        {activeConfig.movementPolicy !== "blocks" ? (
-          <p className="muted">Zet verplaatsbeleid op "Blokken" om deze mapping te gebruiken.</p>
-        ) : null}
-
-        {(activeConfig.locationBlocks ?? []).length === 0 ? (
-          <p className="muted">Nog geen blokken ingesteld.</p>
-        ) : null}
-
-        {(activeConfig.locationBlocks ?? []).map((block) => {
-          const range = findBlockRange(block, orderedTimeslots);
-          return (
-            <article key={block.id} className="sub-card">
-              <div className="block-header-row">
-                <label>
-                  Bloknaam
-                  <input
-                    value={block.name}
-                    onChange={(event) => {
-                      const nextBlocks = (activeConfig.locationBlocks ?? []).map((item) =>
-                        item.id === block.id ? { ...item, name: event.target.value } : item
-                      );
-                      updateConfig({ locationBlocks: nextBlocks });
-                    }}
-                  />
-                </label>
-                <label>
-                  Vanaf slot
-                  <select
-                    value={range.startId}
-                    onChange={(event) => updateBlockRange(block.id, event.target.value, range.endId)}
-                  >
-                    {orderedTimeslots.map((slot) => (
-                      <option key={slot.id} value={slot.id}>
-                        {slot.label ?? slot.id}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Tot slot
-                  <select
-                    value={range.endId}
-                    onChange={(event) => updateBlockRange(block.id, range.startId, event.target.value)}
-                  >
-                    {orderedTimeslots.map((slot) => (
-                      <option key={slot.id} value={slot.id}>
-                        {slot.label ?? slot.id}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="danger-button"
-                  onClick={async () => {
-                    const ok = await confirmDialog({
-                      title: "Blok verwijderen",
-                      message: `Locatieblok "${block.name ?? block.id}" verwijderen?`,
-                      confirmLabel: "Verwijder",
-                      variant: "danger",
-                    });
-                    if (!ok) return;
-                    updateConfig({
-                      locationBlocks: (activeConfig.locationBlocks ?? []).filter((item) => item.id !== block.id),
-                    });
-                  }}
-                >
-                  Verwijder
-                </button>
-              </div>
-              <div className="table-wrap">
-                <table className="simple-table">
-                  <thead>
-                    <tr>
-                      <th>Pool</th>
-                      <th>Veld</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeConfig.segments.map((segment) => (
-                      <tr key={`${block.id}-${segment.id}`}>
-                        <td>{segment.name}</td>
-                        <td>
-                          <select
-                            value={block.segmentLocationMap[segment.id] ?? ""}
-                            onChange={(event) => {
-                              const nextBlocks = (activeConfig.locationBlocks ?? []).map((item) =>
-                                item.id === block.id
-                                  ? {
-                                      ...item,
-                                      segmentLocationMap: {
-                                        ...item.segmentLocationMap,
-                                        [segment.id]: event.target.value,
-                                      },
-                                    }
-                                  : item
-                              );
-                              updateConfig({ locationBlocks: nextBlocks });
-                            }}
-                          >
-                            <option value="">Kies veld</option>
-                            {activeConfig.locations.map((location) => (
-                              <option key={location.id} value={location.id}>
-                                {location.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          );
-        })}
-        </CollapsibleSection>
-      </section>
-
-      {advancedOpen ? (
-        <section className="card">
-          <h3>Expert modus (JSON)</h3>
-          <p className="muted">Alleen nodig voor snelle bulk-aanpassingen. Structuur is strikt v2.</p>
-          <div className="json-grid">
-            <label>
-              segments
-              <textarea
-                className="code-textarea"
-                value={segmentsRaw}
-                onChange={(event) => setSegmentsRaw(event.target.value)}
-              />
-            </label>
-            <label>
-              groups
-              <textarea
-                className="code-textarea"
-                value={groupsRaw}
-                onChange={(event) => setGroupsRaw(event.target.value)}
-              />
-            </label>
-            <label>
-              locations
-              <textarea
-                className="code-textarea"
-                value={locationsRaw}
-                onChange={(event) => setLocationsRaw(event.target.value)}
-              />
-            </label>
-            <label>
-              activityTypes
-              <textarea
-                className="code-textarea"
-                value={activityTypesRaw}
-                onChange={(event) => setActivityTypesRaw(event.target.value)}
-              />
-            </label>
-            <label>
-              stations
-              <textarea
-                className="code-textarea"
-                value={stationsRaw}
-                onChange={(event) => setStationsRaw(event.target.value)}
-              />
-            </label>
-            <label>
-              timeslots
-              <textarea
-                className="code-textarea"
-                value={timeslotsRaw}
-                onChange={(event) => setTimeslotsRaw(event.target.value)}
-              />
-            </label>
-            <label>
-              locationBlocks
-              <textarea
-                className="code-textarea"
-                value={blocksRaw}
-                onChange={(event) => setBlocksRaw(event.target.value)}
-              />
-            </label>
-          </div>
-          <div className="inline-actions">
-            <button type="button" onClick={applyJsonSections}>
-              Pas JSON secties toe
-            </button>
-          </div>
-          {jsonError ? <p className="error-text">{jsonError}</p> : null}
-        </section>
-      ) : null}
         </>
       )}
 

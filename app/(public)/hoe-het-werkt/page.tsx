@@ -202,7 +202,7 @@ export default function HoeHetWerktPage() {
 
         <div className="pub-feature-row">
           <div className="pub-feature-text">
-            <span className="pub-step-badge">spellenbibliotheek</span>
+            <span className="pub-step-badge">drankspellen</span>
             <h3>20 spellen met speluitleg</h3>
             <p>
               Elke ingebouwde spel heeft regels, veldopzet en spelersaantal. Vrijwilligers
@@ -211,7 +211,7 @@ export default function HoeHetWerktPage() {
             </p>
           </div>
           <div className="pub-feature-visual">
-            <ImageLightbox src="/speluitleg-spellenbibliotheek.png" alt="Speluitleg-editor met spelregels en veldopzet voor een spel in de spellenbibliotheek" />
+            <ImageLightbox src="/speluitleg-spellenbibliotheek.png" alt="Speluitleg-editor met spelregels en veldopzet voor een spel in de drankspellen" />
           </div>
         </div>
 

@@ -146,14 +146,16 @@ export function computeSpelVariety(
   config: ConfigV2,
 ): number {
   const stationById = new Map(config.stations.map((s) => [s.id, s]));
-  const totalActivityTypes = config.activityTypes.filter((a) => a.id !== "activity-pause").length;
+  const totalActivityTypes = config.activityTypes.filter(
+    (a) => a.id !== "activity-pause" && a.id !== "activity-kroegbezoek"
+  ).length;
   if (totalActivityTypes === 0) return 1;
 
   const groupActivities = new Map<Id, Set<Id>>();
 
   for (const alloc of plan.allocations) {
     const station = stationById.get(alloc.stationId);
-    if (!station || station.activityTypeId === "activity-pause") continue;
+    if (!station || station.activityTypeId === "activity-pause" || station.activityTypeId === "activity-kroegbezoek") continue;
     for (const groupId of alloc.groupIds) {
       let set = groupActivities.get(groupId);
       if (!set) {
@@ -187,7 +189,7 @@ export function computeRepeatCount(
 
   for (const alloc of plan.allocations) {
     const station = stationById.get(alloc.stationId);
-    if (!station || station.activityTypeId === "activity-pause") continue;
+    if (!station || station.activityTypeId === "activity-pause" || station.activityTypeId === "activity-kroegbezoek") continue;
     for (const groupId of alloc.groupIds) {
       let byType = countsByGroup.get(groupId);
       if (!byType) {

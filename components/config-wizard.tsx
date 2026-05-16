@@ -26,7 +26,7 @@ const FALLBACK_SUGGESTIONS = getSpelNames();
  * 8. Schedule + Rules
  * Summary
  */
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 7;
 
 // ── Calculations ───────────────────────────────────────────────────────
 
@@ -125,15 +125,16 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
 
   // Step 1
   const [name, setName] = useState("");
-  // Step 2 - Modus + Pools
+  // Step 2 - Modus + Pools + Spellen-toggle
   const [mode, setMode] = useState<"solo" | "vs">("solo");
+  const [gamesEnabled, setGamesEnabled] = useState(true);
   const [usePools, setUsePools] = useState(false);
   const [poolNames, setPoolNames] = useState(["Route A", "Route B"]);
   // Step 3
   const [groupCount, setGroupCount] = useState(6);
   const [groupsPerPool, setGroupsPerPool] = useState<number[]>([3, 3]);
-  // Step 4 (movement — only with pools)
-  const [movementPolicy, setMovementPolicy] = useState<"free" | "blocks">("free");
+  // Verplaatsbeleid: Blokken-keuze is uit de UI; nieuwe configs zijn altijd 'free'.
+  const movementPolicy: "free" | "blocks" = "free";
   // Step 5
   const [spellen, setSpellen] = useState<string[]>([]);
   const [newSpel, setNewSpel] = useState("");
@@ -161,11 +162,13 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   // Step 7 (stations — auto-generated)
   const [stationLayout, setStationLayout] = useState<"same" | "split">("split");
   const [stationOverrides, setStationOverrides] = useState<Array<{ spel: string; location: string; capacity: number }> | null>(null);
-  // Step 8 (schedule + rules)
+  // Step 7 (schedule + rules)
   const [startTime, setStartTime] = useState("19:30");
   const [roundDuration, setRoundDuration] = useState(30);
   const [transitionTime, setTransitionTime] = useState(10);
   const [repeatPolicy, setRepeatPolicy] = useState<"off" | "soft" | "hard">("soft");
+  // Pauze-slot halverwege (eet- of stadsmoment). Default uit — gebruiker schakelt zelf in.
+  const [enableBreak, setEnableBreak] = useState(false);
   // Pause activity (bye groups)
   const [pauseActivityName, setPauseActivityName] = useState("");
 
@@ -191,26 +194,14 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
     setGroupCount(next.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0));
   }
 
-  // ── Auto-fill locaties bij pools + blocks ────────────────────────
-
-  useEffect(() => {
-    if (usePools && movementPolicy === "blocks" && locations.length < poolNames.length) {
-      const next = [...locations];
-      while (next.length < poolNames.length) {
-        next.push({ name: `Kroeg ${next.length + 1}` });
-      }
-      setLocations(next);
-    }
-  }, [usePools, poolNames.length, movementPolicy]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Derived ───────────────────────────────────────────────────────
 
   const poolCount = usePools ? poolNames.length : 1;
   const effectiveMovement = usePools ? movementPolicy : "free";
   const actualPoolSizes = usePools ? groupsPerPool : undefined;
   const calc = useMemo(
-    () => calculateSchedule(groupCount, poolCount, spellen.length, effectiveMovement, locations.length, scheduleMode, stationLayout, actualPoolSizes),
-    [groupCount, poolCount, spellen.length, effectiveMovement, locations.length, scheduleMode, stationLayout, actualPoolSizes]
+    () => calculateSchedule(groupCount, poolCount, spellen.length, effectiveMovement, locations.length, scheduleMode, stationLayout, actualPoolSizes, enableBreak),
+    [groupCount, poolCount, spellen.length, effectiveMovement, locations.length, scheduleMode, stationLayout, actualPoolSizes, enableBreak]
   );
 
   const [feasibility, setFeasibility] = useState<FeasibilityResult>({ repeats: 0, summary: [], totalScore: 0, loading: false });
@@ -297,41 +288,22 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
   }
 
   const autoStations = useMemo(() => {
+    // Capaciteit: Solo = 1 groep per kroeg, Vs = 2 groepen per kroeg.
+    const cap = mode === "solo" ? 1 : 2;
     const result: Array<{ spel: string; location: string; capacity: number }> = [];
 
     const locNames = locations.map((l) => l.name);
-    if (effectiveMovement === "blocks" && usePools && locNames.length >= 2) {
-      if (stationLayout === "same") {
-        // Each location gets the same set of all spellen
-        for (const loc of locNames) {
-          for (const spel of spellen) {
-            result.push({ spel, location: loc, capacity: 2 });
-          }
-        }
-      } else {
-        // Split: groepeer spellen per locatie (1-5 → veld 1, 6-10 → veld 2)
-        const perLoc = Math.ceil(spellen.length / locNames.length);
-        for (let i = 0; i < spellen.length; i++) {
-          result.push({
-            spel: spellen[i],
-            location: locNames[Math.floor(i / perLoc)] ?? locNames[locNames.length - 1],
-            capacity: 2,
-          });
-        }
-      }
-    } else {
-      // Free / no pools: groepeer spellen per locatie
-      const perLoc = Math.ceil(spellen.length / Math.max(locNames.length, 1));
-      for (let i = 0; i < spellen.length; i++) {
-        result.push({
-          spel: spellen[i],
-          location: locNames[Math.floor(i / perLoc)] ?? locNames[locNames.length - 1],
-          capacity: 2,
-        });
-      }
+    // Movement is altijd 'free': groepeer spellen per locatie (sequentieel).
+    const perLoc = Math.ceil(spellen.length / Math.max(locNames.length, 1));
+    for (let i = 0; i < spellen.length; i++) {
+      result.push({
+        spel: spellen[i],
+        location: locNames[Math.floor(i / perLoc)] ?? locNames[locNames.length - 1],
+        capacity: cap,
+      });
     }
     return result;
-  }, [spellen, locations, effectiveMovement, usePools, stationLayout]);
+  }, [spellen, locations, effectiveMovement, usePools, stationLayout, mode]);
 
   const activeStations = stationOverrides ?? autoStations;
 
@@ -366,37 +338,45 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
     if (l && !locations.some((x) => x.name === l)) { setLocations([...locations, { name: l }]); setNewLocation(""); }
   }
 
+  const skipSpelKoppeling = mode === "solo" && !gamesEnabled;
+
   function goNext() {
     let next = step + 1;
-    // Skip step 4 (movement) if no pools
-    if (next === 4 && !usePools) next = 5;
-    // Reset station overrides when entering step 7
-    if (next === 7) setStationOverrides(null);
+    // Skip step 5 (spel-koppeling) bij Solo + spellen-uit.
+    if (next === 5 && skipSpelKoppeling) next = 6;
+    // Reset station overrides when entering step 6 (Stations + optimalisatie)
+    if (next === 6) setStationOverrides(null);
     setStep(Math.min(next, TOTAL_STEPS + 1));
   }
   function goBack() {
     let prev = step - 1;
-    if (prev === 4 && !usePools) prev = 3;
+    if (prev === 5 && skipSpelKoppeling) prev = 4;
     setStep(Math.max(prev, 1));
   }
 
   // Can we proceed?
   function canGoNext(): boolean {
-    if (step === 5 && locations.length === 0) return false;
-    if (step === 6 && spellen.filter(Boolean).length < locations.length) return false;
+    if (step === 4 && locations.length === 0) return false;
+    if (step === 5 && !skipSpelKoppeling && spellen.filter(Boolean).length < locations.length) return false;
     return true;
   }
 
   // ── Build config ──────────────────────────────────────────────────
 
   function wizardBuildConfig(): ConfigV2 {
+    // Bij Solo + spellen-uit: bouw met placeholder-spel "Kroegbezoek" zodat
+    // buildConfig 1 station per kroeg maakt; herschrijf daarna naar de
+    // activity-kroegbezoek conventie die de rest van de app verwacht.
+    const isKroegbezoekOnly = mode === "solo" && !gamesEnabled;
+    const effectiveSpellen = isKroegbezoekOnly ? ["Kroegbezoek"] : spellen;
+
     const config = buildConfig({
       name,
       usePools,
       poolNames,
       groupCount,
       groupsPerPool: usePools ? groupsPerPool : undefined,
-      spellen,
+      spellen: effectiveSpellen,
       locations,
       movementPolicy,
       stationLayout,
@@ -406,9 +386,9 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
       roundDurationMinutes: roundDuration,
       transitionMinutes: transitionTime,
       repeatPolicy,
-      stationOverrides: stationOverrides ?? undefined,
+      stationOverrides: isKroegbezoekOnly ? undefined : (stationOverrides ?? undefined),
       pauseActivityName: calc.hasBye && pauseActivityName ? pauseActivityName : undefined,
-      enableBreak: false,
+      enableBreak,
     }).config;
 
     // Extra rondes toevoegen (vanuit "+N speelronde" suggesties)
@@ -433,6 +413,22 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           }
         }
       }
+    }
+
+    if (isKroegbezoekOnly) {
+      // Vervang de placeholder-activityType door de canonieke kroegbezoek-id.
+      const placeholder = config.activityTypes.find((a) => a.name === "Kroegbezoek");
+      if (placeholder) {
+        config.activityTypes = config.activityTypes
+          .filter((a) => a.id !== placeholder.id)
+          .concat({ id: "activity-kroegbezoek", name: "Kroegbezoek", baseId: null });
+        config.stations = config.stations.map((s) =>
+          s.activityTypeId === placeholder.id ? { ...s, activityTypeId: "activity-kroegbezoek" } : s
+        );
+      }
+      config.gamesEnabled = false;
+    } else {
+      config.gamesEnabled = true;
     }
 
     return config;
@@ -485,6 +481,35 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                 <small>Twee groepen komen samen in een kroeg en spelen tegen elkaar. Klassieke winst/gelijk/verlies-scoring.</small>
               </button>
             </div>
+
+            {mode === "solo" && (
+              <>
+                <h3 style={{ margin: "16px 0 0" }}>Spellen in de tocht?</h3>
+                <p className="muted" style={{ margin: 0 }}>
+                  Wil je per kroeg een drankspel koppelen, of is het puur een kroegentocht zonder spellen?
+                </p>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <button
+                    type="button"
+                    className={gamesEnabled ? "start-mode-option is-active" : "start-mode-option"}
+                    onClick={() => setGamesEnabled(true)}
+                    style={{ textAlign: "left" }}
+                  >
+                    🎮 Met spellen (aanbevolen)
+                    <small>Elke kroeg krijgt een spel. Spellen worden automatisch gekoppeld, je kunt ze daarna wijzigen.</small>
+                  </button>
+                  <button
+                    type="button"
+                    className={!gamesEnabled ? "start-mode-option is-active" : "start-mode-option"}
+                    onClick={() => setGamesEnabled(false)}
+                    style={{ textAlign: "left" }}
+                  >
+                    🍻 Pure kroegentocht
+                    <small>Geen drankspellen. Groepen bezoeken kroegen in volgorde zonder activiteit.</small>
+                  </button>
+                </div>
+              </>
+            )}
 
             <h3 style={{ margin: "16px 0 0" }}>Wil je pools gebruiken?</h3>
             <p className="muted" style={{ margin: 0 }}>
@@ -581,29 +606,8 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           </div>
         )}
 
-        {/* Step 4: Movement policy (only with pools) — voor kroegentocht is "vrij" standaard de juiste keuze. */}
-        {step === 4 && usePools && (
-          <div className="form-grid">
-            <h3 style={{ margin: 0 }}>Verplaatsbeleid</h3>
-            <p className="muted" style={{ margin: 0 }}>
-              Bij een kroegentocht lopen groepen elke ronde naar een nieuwe kroeg, dus &apos;Vrij&apos; is standaard de juiste keuze.
-              &apos;Blokken&apos; is een legacy-optie uit de sportdag-context.
-            </p>
-            <div style={{ display: "grid", gap: 8 }}>
-              <button type="button" className={movementPolicy === "free" ? "start-mode-option is-active" : "start-mode-option"} onClick={() => setMovementPolicy("free")} style={{ textAlign: "left" }}>
-                Vrij (aanbevolen)
-                <small>Alle groepen verspreiden zich elke ronde over alle kroegen. Standaard voor kroegentochten.</small>
-              </button>
-              <button type="button" className={movementPolicy === "blocks" ? "start-mode-option is-active" : "start-mode-option"} onClick={() => setMovementPolicy("blocks")} style={{ textAlign: "left" }}>
-                Blokken (legacy)
-                <small>Elke pool speelt in een vast blok op één locatie. Niet zinvol voor een tocht door een stad.</small>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Kroegen (was step 6 — komt nu vóór de spellen-toewijzing). */}
-        {step === 5 && (
+        {/* Step 4: Kroegen */}
+        {step === 4 && (
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Welke kroegen worden bezocht?</h3>
             <p className="muted" style={{ margin: 0 }}>
@@ -612,7 +616,6 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
               {mode === "solo"
                 ? ` Bij Solo-modus heb je minimaal ${groupCount} kroegen nodig (1 per groep per ronde).`
                 : ` Bij Vs-modus heb je minimaal ${Math.ceil(groupCount / 2)} kroegen nodig (2 groepen per kroeg).`}
-              {usePools && movementPolicy === "blocks" ? ` Bij blokken heb je minimaal ${poolCount} locaties nodig (1 per pool).` : ""}
             </p>
             <div>
               {locations.map((l, i) => (
@@ -651,16 +654,11 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                 <button type="button" className="btn-sm btn-ghost" onClick={() => setShowVenueSearch(true)}>🔍 Zoek meerdere kroegen tegelijk</button>
               </div>
             </div>
-            {usePools && movementPolicy === "blocks" && locations.length < poolCount && (
-              <div className="notice notice-warning" style={{ marginTop: 8 }}>
-                <p style={{ margin: 0 }}>Bij blokken heb je minimaal {poolCount} locaties nodig. Voeg nog {poolCount - locations.length} locatie{poolCount - locations.length > 1 ? "s" : ""} toe.</p>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Step 6: Spel per kroeg (was step 5 — paradigm change: 1-op-1 mapping). */}
-        {step === 6 && (
+        {/* Step 5: Spel per kroeg (1-op-1 mapping). Skip bij Solo + spellen-uit. */}
+        {step === 5 && !(mode === "solo" && !gamesEnabled) && (
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Welk spel speel je in elke kroeg?</h3>
             <p className="muted" style={{ margin: 0 }}>
@@ -725,55 +723,10 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
           </div>
         )}
 
-        {/* Step 7: Je kroegentocht */}
-        {step === 7 && (
+        {/* Step 6: Je kroegentocht (stations + optimalisatie) */}
+        {step === 6 && (
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Je kroegentocht</h3>
-
-            {effectiveMovement === "blocks" && usePools && locations.length >= 2 && (
-              <>
-                <p className="muted" style={{ margin: 0 }}>Hoe wil je de spellen verdelen over de velden?</p>
-                <div style={{ display: "grid", gap: 8 }}>
-                  <button
-                    type="button"
-                    className={stationLayout === "split" ? "start-mode-option is-active" : "start-mode-option"}
-                    onClick={() => { setStationLayout("split"); setStationOverrides(null); }}
-                    style={{ textAlign: "left" }}
-                  >
-                    Verschillende spellen per veld
-                    <small>Spellen worden verdeeld over de velden. Meer variatie, elk veld heeft eigen activiteiten.</small>
-                  </button>
-                  <button
-                    type="button"
-                    className={stationLayout === "same" ? "start-mode-option is-active" : "start-mode-option"}
-                    onClick={() => { setStationLayout("same"); setStationOverrides(null); }}
-                    style={{ textAlign: "left" }}
-                  >
-                    Dezelfde spellen op elk veld
-                    <small>Elk veld krijgt alle spellen. Pools spelen dezelfde spellen, maar op hun eigen veld.</small>
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Waarschuwing bij onhaalbare speldekking in all-spellen modus */}
-            {scheduleMode === "all-spellen" && usePools && movementPolicy === "blocks" && (() => {
-              const perPool = Math.ceil(groupCount / poolNames.length);
-              const H = Math.floor(perPool / 2);
-              const algebraicOk = perPool % 2 === 0 && hasAlgebraicK(H);
-              if (algebraicOk) return null;
-              return (
-                <div className="notice notice-warning" style={{ marginTop: 8 }}>
-                  <p style={{ margin: 0, fontSize: "0.85rem" }}>
-                    Met {perPool} groepen per pool is het niet gegarandeerd dat <strong>alle</strong> groepen alle {spellen.length} spellen spelen.
-                    Een deel van de groepen zal mogelijk 1 of meer spellen missen.
-                    {alternatives.length > 0
-                      ? "Bekijk de aanbevolen configuraties hieronder voor alternatieven met volledige dekking."
-                      : "Klik op \"Optimaliseer mijn kroegentocht\" om aanbevolen configuraties met volledige dekking te bekijken."}
-                  </p>
-                </div>
-              );
-            })()}
 
             {extraRounds > 0 && (
               <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(59,130,246,0.06)", borderRadius: 6, border: "1px solid rgba(59,130,246,0.2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -808,32 +761,51 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
               </div>
             )}
 
-            {/* Perfect: geen optimalisatie nodig */}
-            {!feasibility.loading && feasibility.repeats === 0 && feasibility.totalScore >= 10 && feasibility.summary.every((l) => l.severity !== "warn") && (
-              <div style={{ marginTop: 8, padding: "10px 14px", background: "rgba(34,139,34,0.06)", borderRadius: 6, border: "1px solid rgba(34,139,34,0.2)" }}>
-                <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9rem" }}>
-                  &#x2705; Perfecte configuratie! Geen aanpassingen nodig.
-                </p>
-              </div>
-            )}
+            {(() => {
+              // Solo-aware "perfect"-check: stationOccupancy (en daarmee totalScore)
+              // is mathematisch begrensd in Solo (zeker bij 1-groep) — geen geldige metric.
+              // Voor Solo: 0 herhalingen + geen mismatch tussen groepen/kroegen/slots = perfect.
+              const isSolo = mode === "solo";
+              const noWarnings = feasibility.summary.every((l) => l.severity !== "warn");
+              const stationCount = autoStations.length;
+              const noMismatch = groupCount > 0 && stationCount > 0 && groupCount <= stationCount;
+              const isPerfect = isSolo
+                ? feasibility.repeats === 0 && noWarnings && noMismatch
+                : feasibility.repeats === 0 && feasibility.totalScore >= 10 && noWarnings;
+              // Kroegbezoek-only: geen alternatieven nodig — er zijn geen spellen om te variëren.
+              const skipAlternatives = isSolo && !gamesEnabled;
 
-            {/* Niet perfect: toon optimaliseer knop */}
-            {!feasibility.loading && feasibility.repeats >= 0 && !(feasibility.repeats === 0 && feasibility.totalScore >= 10 && feasibility.summary.every((l) => l.severity !== "warn")) && alternatives.length === 0 && !alternativesLoading && (
-              <div style={{ marginTop: 8 }}>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={runOptimization}
-                  disabled={alternativesLoading}
-                  style={{ width: "100%" }}
-                >
-                  Optimaliseer mijn kroegentocht
-                </button>
-                <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.78rem" }}>
-                  We zoeken een betere configuratie door groepen, spellen en layout te variëren.
-                </p>
-              </div>
-            )}
+              if (feasibility.loading) return null;
+              if (feasibility.repeats < 0) return null;
+
+              if (isPerfect) {
+                return (
+                  <div style={{ marginTop: 8, padding: "10px 14px", background: "rgba(34,139,34,0.06)", borderRadius: 6, border: "1px solid rgba(34,139,34,0.2)" }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9rem" }}>
+                      &#x2705; Perfecte configuratie! Geen aanpassingen nodig.
+                    </p>
+                  </div>
+                );
+              }
+              if (skipAlternatives) return null;
+              if (alternatives.length > 0 || alternativesLoading) return null;
+              return (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={runOptimization}
+                    disabled={alternativesLoading}
+                    style={{ width: "100%" }}
+                  >
+                    Optimaliseer mijn kroegentocht
+                  </button>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.78rem" }}>
+                    We zoeken een betere configuratie door groepen, spellen en {isSolo ? "rondes" : "layout"} te variëren.
+                  </p>
+                </div>
+              );
+            })()}
 
             {alternativesLoading && (
               <InfoBox><p style={{ margin: 0 }}>Bezig met optimaliseren...</p></InfoBox>
@@ -851,10 +823,16 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                       </div>
                       <div className="muted" style={{ fontSize: "0.78rem", marginTop: 2 }}>{alt.reason}</div>
                       <div style={{ fontSize: "0.78rem", marginTop: 4, color: alt.spelCoverage.full === alt.spelCoverage.total ? "#1a6b1a" : "#888" }}>
-                        {alt.spelCoverage.full === alt.spelCoverage.total
-                          ? `Alle ${alt.spelCoverage.total} groepen spelen alle spellen`
-                          : `${alt.spelCoverage.full}/${alt.spelCoverage.total} groepen spelen alle spellen`}
-                        {" \u00B7 "}{alt.achievedRepeats} herhaling{alt.achievedRepeats !== 1 ? "en" : ""}
+                        {mode === "solo" ? (
+                          alt.spelCoverage.full === alt.spelCoverage.total
+                            ? `Alle ${alt.spelCoverage.total} groepen bezoeken alle kroegen`
+                            : `${alt.spelCoverage.full}/${alt.spelCoverage.total} groepen alle kroegen`
+                        ) : (
+                          alt.spelCoverage.full === alt.spelCoverage.total
+                            ? `Alle ${alt.spelCoverage.total} groepen spelen alle spellen`
+                            : `${alt.spelCoverage.full}/${alt.spelCoverage.total} groepen spelen alle spellen`
+                        )}
+                        {alt.achievedRepeats > 0 ? ` \u00B7 ${alt.achievedRepeats} ${mode === "solo" ? "kroeg herbezocht" : "herhaling"}${alt.achievedRepeats !== 1 ? "en" : ""}` : ""}
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
@@ -863,7 +841,7 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
                         if (alt.apply.spellen) setSpellen(alt.apply.spellen);
                         if (alt.apply.stationLayout) { setStationLayout(alt.apply.stationLayout); setStationOverrides(null); }
                         if (alt.apply.scheduleMode) setScheduleMode(alt.apply.scheduleMode);
-                        if (alt.apply.movementPolicy) setMovementPolicy(alt.apply.movementPolicy);
+                        // movementPolicy genegeerd: wizard ondersteunt geen blocks-mode meer.
                         if (alt.apply.addTimeslots) setExtraRounds(alt.apply.addTimeslots);
                         if (alt.apply.addPauseActivity) setPauseActivityName(alt.apply.addPauseActivity);
                         setAlternatives([]);
@@ -895,55 +873,63 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
               </div>
             )}
 
-            <p className="muted" style={{ margin: 0 }}>
-              Er worden <strong>{activeStations.length} stations</strong> aangemaakt.
-              Je kunt spellen verplaatsen naar een ander veld.
-            </p>
-            {locations.map((loc) => {
-              const stationsForLoc = activeStations
-                .map((s, i) => ({ ...s, origIndex: i }))
-                .filter((s) => s.location === loc.name);
-              if (stationsForLoc.length === 0) return null;
-              return (
-                <div key={loc.name} style={{ marginBottom: 12 }}>
-                  <p style={{ margin: "0 0 4px", fontWeight: 600, fontSize: "0.85rem" }}>{loc.name} ({stationsForLoc.length} station{stationsForLoc.length !== 1 ? "s" : ""})</p>
-                  {stationsForLoc.map((s) => (
-                    <div key={s.origIndex} style={{ display: "flex", gap: 6, marginBottom: 3, alignItems: "center", paddingLeft: 8 }}>
-                      <span style={{ flex: "1 1 120px", fontSize: "0.88rem" }}>{s.spel}</span>
-                      {locations.length > 1 && (
-                        <select value={s.location} onChange={(e) => {
-                          const next = [...activeStations];
-                          next[s.origIndex] = { ...next[s.origIndex], location: e.target.value };
-                          setStationOverrides(next);
-                        }} style={{ flex: "0 0 110px", fontSize: "0.85rem" }}>
-                          {locations.map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
-                        </select>
-                      )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 80px" }}>
-                        <span className="muted" style={{ fontSize: "0.75rem" }}>cap:</span>
-                        <input type="number" min={1} max={10} value={s.capacity} onChange={(e) => {
-                          const v = Number(e.target.value) || 0;
-                          const next = [...activeStations];
-                          next[s.origIndex] = { ...next[s.origIndex], capacity: v };
-                          setStationOverrides(next);
-                        }} onBlur={() => {
-                          if (s.capacity < 1) {
-                            const next = [...activeStations];
-                            next[s.origIndex] = { ...next[s.origIndex], capacity: 1 };
-                            setStationOverrides(next);
-                          }
-                        }} style={{ width: 45, fontSize: "0.85rem" }} />
-                      </div>
+            {/* Stations-overzicht: alleen tonen als er iets te tweaken valt.
+                Solo + kroegbezoek = 1 kroegbezoek-station per kroeg, automatisch — geen UI nodig. */}
+            {!(mode === "solo" && !gamesEnabled) && (
+              <>
+                <p className="muted" style={{ margin: 0 }}>
+                  Er worden <strong>{activeStations.length} stations</strong> aangemaakt.
+                  {mode === "vs" ? " Je kunt spellen verplaatsen naar een ander veld of capaciteit aanpassen." : " Je kunt spellen verplaatsen naar een andere kroeg."}
+                </p>
+                {locations.map((loc) => {
+                  const stationsForLoc = activeStations
+                    .map((s, i) => ({ ...s, origIndex: i }))
+                    .filter((s) => s.location === loc.name);
+                  if (stationsForLoc.length === 0) return null;
+                  return (
+                    <div key={loc.name} style={{ marginBottom: 12 }}>
+                      <p style={{ margin: "0 0 4px", fontWeight: 600, fontSize: "0.85rem" }}>{loc.name} ({stationsForLoc.length} station{stationsForLoc.length !== 1 ? "s" : ""})</p>
+                      {stationsForLoc.map((s) => (
+                        <div key={s.origIndex} style={{ display: "flex", gap: 6, marginBottom: 3, alignItems: "center", paddingLeft: 8 }}>
+                          <span style={{ flex: "1 1 120px", fontSize: "0.88rem" }}>{s.spel}</span>
+                          {locations.length > 1 && (
+                            <select value={s.location} onChange={(e) => {
+                              const next = [...activeStations];
+                              next[s.origIndex] = { ...next[s.origIndex], location: e.target.value };
+                              setStationOverrides(next);
+                            }} style={{ flex: "0 0 110px", fontSize: "0.85rem" }}>
+                              {locations.map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
+                            </select>
+                          )}
+                          {mode === "vs" && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 80px" }}>
+                              <span className="muted" style={{ fontSize: "0.75rem" }}>cap:</span>
+                              <input type="number" min={1} max={10} value={s.capacity} onChange={(e) => {
+                                const v = Number(e.target.value) || 0;
+                                const next = [...activeStations];
+                                next[s.origIndex] = { ...next[s.origIndex], capacity: v };
+                                setStationOverrides(next);
+                              }} onBlur={() => {
+                                if (s.capacity < 1) {
+                                  const next = [...activeStations];
+                                  next[s.origIndex] = { ...next[s.origIndex], capacity: 1 };
+                                  setStationOverrides(next);
+                                }
+                              }} style={{ width: 45, fontSize: "0.85rem" }} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 
-        {/* Step 8: Schedule + Rules */}
-        {step === 8 && (
+        {/* Step 7: Schedule + Rules */}
+        {step === 7 && (
           <div className="form-grid">
             <h3 style={{ margin: 0 }}>Tijdschema</h3>
             <p className="muted" style={{ margin: 0 }}>
@@ -955,37 +941,55 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
               <label>Duur per ronde (min)<input type="number" min={5} value={roundDuration} onChange={(e) => setRoundDuration(Number(e.target.value) || 0)} onBlur={() => { if (roundDuration < 5) setRoundDuration(5); }} /></label>
               <label>Wisseltijd (min)<input type="number" min={0} value={transitionTime} onChange={(e) => setTransitionTime(Number(e.target.value) || 0)} /></label>
             </div>
+            <label className="toggle-field" style={{ marginTop: 4 }} title="Voegt een pauze-slot toe halverwege de tocht (bv. eten of stadsmoment). Bij ≥4 rondes.">
+              <input type="checkbox" checked={enableBreak} onChange={(e) => setEnableBreak(e.target.checked)} />
+              <span>☕ Pauze halverwege de tocht</span>
+            </label>
             <InfoBox>
               <p style={{ margin: "0 0 4px" }}><strong>Programma:</strong></p>
               {schedulePreview.slots.map((s, i) => (
                 <p key={i} style={{ margin: "2px 0", fontSize: "0.82rem" }}>
-                  {s.kind === "Pauze" ? "\u2615" : "\u26BD"} {s.label} — {s.kind}
+                  {s.kind === "Pauze" ? "\u2615" : "\uD83C\uDF7B"} {s.label} — {s.kind}
                 </p>
               ))}
               <p style={{ margin: "6px 0 0", fontWeight: 600, fontSize: "0.85rem" }}>Einde: {schedulePreview.endTime}</p>
             </InfoBox>
 
             <h3 style={{ margin: "12px 0 0" }}>Regels</h3>
-            <InfoBox>
-              <p style={{ margin: 0 }}>
-                {calc.matchupMaxNeeded === 1
-                  ? "Elke groep speelt maximaal 1x tegen dezelfde tegenstander."
-                  : `Met ${calc.roundsNeeded} rondes en ${calc.roundRobinRounds} unieke tegenstanders spelen sommige groepen ${calc.matchupMaxNeeded}x tegen dezelfde tegenstander.`}
-              </p>
-            </InfoBox>
-            <label>
-              Herhaling van hetzelfde spel
-              <select value={repeatPolicy} onChange={(e) => setRepeatPolicy(e.target.value as "off" | "soft" | "hard")}>
-                <option value="off">Toestaan</option>
-                <option value="soft">Liever niet (waarschuwing)</option>
-                <option value="hard">Verbieden</option>
-              </select>
-              <small className="muted">
-                {repeatPolicy === "off" && "Groepen mogen hetzelfde spel vaker doen."}
-                {repeatPolicy === "soft" && "De planner probeert herhalingen te vermijden, maar blokkeert niet."}
-                {repeatPolicy === "hard" && "De planner weigert als een groep hetzelfde spel twee keer doet."}
-              </small>
-            </label>
+            {mode === "vs" && (
+              <InfoBox>
+                <p style={{ margin: 0 }}>
+                  {calc.matchupMaxNeeded === 1
+                    ? "Elke groep speelt maximaal 1x tegen dezelfde tegenstander."
+                    : `Met ${calc.roundsNeeded} rondes en ${calc.roundRobinRounds} unieke tegenstanders spelen sommige groepen ${calc.matchupMaxNeeded}x tegen dezelfde tegenstander.`}
+                </p>
+              </InfoBox>
+            )}
+            {!(mode === "solo" && !gamesEnabled) && (
+              <label>
+                {mode === "solo" ? "Dezelfde kroeg herbezoeken" : "Herhaling van hetzelfde spel"}
+                <select value={repeatPolicy} onChange={(e) => setRepeatPolicy(e.target.value as "off" | "soft" | "hard")}>
+                  <option value="off">Toestaan</option>
+                  <option value="soft">Liever niet (waarschuwing)</option>
+                  <option value="hard">Verbieden</option>
+                </select>
+                <small className="muted">
+                  {mode === "solo" ? (
+                    <>
+                      {repeatPolicy === "off" && "Groepen mogen kroegen herbezoeken als er meer slots dan kroegen zijn."}
+                      {repeatPolicy === "soft" && "De planner probeert kroegen niet te herbezoeken, maar mag het als nodig."}
+                      {repeatPolicy === "hard" && "De planner weigert als een groep een kroeg twee keer zou bezoeken. Generatie kan falen bij meer slots dan kroegen."}
+                    </>
+                  ) : (
+                    <>
+                      {repeatPolicy === "off" && "Groepen mogen hetzelfde spel vaker doen."}
+                      {repeatPolicy === "soft" && "De planner probeert herhalingen te vermijden, maar blokkeert niet."}
+                      {repeatPolicy === "hard" && "De planner weigert als een groep hetzelfde spel twee keer doet."}
+                    </>
+                  )}
+                </small>
+              </label>
+            )}
           </div>
         )}
 
@@ -996,16 +1000,16 @@ export function ConfigWizard({ onComplete, onCancel }: WizardProps) {
             <p className="muted" style={{ margin: 0 }}>Controleer je keuzes.</p>
             <div style={{ display: "grid", gap: 6, fontSize: "0.9rem" }}>
               <div><strong>Naam:</strong> {name || "Nieuwe kroegentocht"}</div>
-              <div><strong>Pools:</strong> {usePools ? poolNames.join(", ") : "Nee"}</div>
-              <div><strong>Groepen:</strong> {groupCount}{usePools ? ` (${groupsPerPool.join(" + ")} per pool)` : ""}</div>
-              {usePools && <div><strong>Verplaatsbeleid:</strong> {movementPolicy === "blocks" ? "Blokken" : "Vrij"}</div>}
-              <div><strong>Spellen:</strong> {spellen.join(", ")}</div>
-              <div><strong>Locaties:</strong> {locations.join(", ")}</div>
+              <div><strong>Modus:</strong> {mode === "solo" ? "Solo" : "Vs"}{mode === "solo" && !gamesEnabled ? " · pure kroegentocht (geen spellen)" : ""}</div>
+              <div><strong>Routes:</strong> {usePools ? poolNames.join(", ") : "Eén route"}</div>
+              <div><strong>Groepen:</strong> {groupCount}{usePools ? ` (${groupsPerPool.join(" + ")} per route)` : ""}</div>
+              {gamesEnabled && <div><strong>Spellen:</strong> {spellen.join(", ")}</div>}
+              <div><strong>Kroegen:</strong> {locations.map((l) => l.name).join(", ")}</div>
               <div><strong>Stations:</strong> {activeStations.length}</div>
               <div><strong>Rondes:</strong> {calc.roundsNeeded} ({roundDuration} min, {transitionTime} min wissel){calc.breakAfterSlot > 0 ? `, pauze na ronde ${calc.breakAfterSlot}` : ""}</div>
               <div><strong>Tijden:</strong> {schedulePreview.slots[0]?.label.split(" - ")[0]} tot {schedulePreview.endTime}</div>
               {pauseActivityName && <div><strong>Pauze-activiteit:</strong> {pauseActivityName}</div>}
-              <div><strong>Tegenstander max:</strong> {calc.matchupMaxNeeded}x</div>
+              {mode === "vs" && <div><strong>Tegenstander max:</strong> {calc.matchupMaxNeeded}x</div>}
               <div><strong>Herhaalde spellen:</strong> {repeatPolicy === "off" ? "Toestaan" : repeatPolicy === "soft" ? "Waarschuwing" : "Verbieden"}</div>
             </div>
 
